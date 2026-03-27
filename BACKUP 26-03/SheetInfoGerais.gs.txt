@@ -1,0 +1,289 @@
+/**
+ * Handler disparado pelo router onEdit quando a aba INFORMAÇÕES GERAIS é editada.
+ */
+function handleInfoGeraisEdit(e) {
+  const range = e.range;
+  const sheet = range.getSheet();
+  const C = resolveSheetColumns_(sheet, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+
+  // 1) Empreendimento -> Unidade (A -> B)
+  if (intervaloInterceptaColuna(range, C.EMP)) {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    ss.toast("Atualizando lista de unidades...", "⏳ Carregando", 2);
+    
+    // Especial para INFORMAÇÕES GERAIS: ao inserir linhas no topo, as validações podem desalinhada.
+    // Reaplica em toda a coluna preenchida para garantir consistência.
+    const linhaIni = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+    const lastRow = obterUltimaLinhaDados_(sheet, C.EMP);
+    if (lastRow >= linhaIni) {
+      const fullRange = sheet.getRange(linhaIni, C.EMP, lastRow - linhaIni + 1, 1);
+      processarIntervaloAparaB_(sheet, fullRange);
+    }
+  }
+
+
+  // 2) Sincronização Completa com FASE-PRELIMINAR
+  // Se qualquer dado essencial (A:J) mudar, sincroniza com a preliminar correspondente.
+  const colFimSinc = 10;
+  if (range.getColumn() <= colFimSinc) {
+    sincronizarPreliminarPorEdicaoInformacoesGerais_(e);
+  }
+}
+
+/**
+ * Sincroniza uma edição específica das Informações Gerais para a Fase Preliminar.
+ */
+function sincronizarPreliminarPorEdicaoInformacoesGerais_(e) {
+  if (!e || !e.range) return;
+
+  const info = e.range.getSheet();
+  const linhaInicialInfo = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+  const primeiraLinha = Math.max(e.range.getRow(), linhaInicialInfo);
+  const numLinhas = e.range.getLastRow() - primeiraLinha + 1;
+  if (numLinhas <= 0) return;
+
+  const dadosEmpUni = info.getRange(primeiraLinha, 1, numLinhas, 2).getDisplayValues();
+  const chavesAlvo = new Set();
+
+  for (let i = 0; i < dadosEmpUni.length; i++) {
+    const emp = String(dadosEmpUni[i][0] || "").trim().toUpperCase();
+    const uni = String(dadosEmpUni[i][1] || "").trim();
+    if (!emp || !uni) continue;
+    chavesAlvo.add(`${emp}|${uni}`);
+  }
+
+  if (chavesAlvo.size === 0) return;
+  sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, false);
+}
+
+/**
+ * Funções chamadas diretamente pelo menu "Automacao ECQUA"
+ */
+function inserirNovaLinhaTopoInformacoesGerais() {
+  inserirLinhasTopoInformacoesGerais_(1, true);
+}
+
+function inserirCincoLinhasTopoInformacoesGerais() {
+  inserirLinhasTopoInformacoesGerais_(5, true);
+}
+
+/**
+ * Insere novas linhas no topo da tabela de informações gerais.
+ */
+function inserirLinhasTopoInformacoesGerais_(quantidade, exibirAlerta) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+  if (!info) {
+    if (exibirAlerta) SpreadsheetApp.getUi().alert("Aba INFORMAÇÕES GERAIS não encontrada.");
+    return;
+  }
+
+  const linhaIni = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+  const qtd = Math.max(1, Number(quantidade) || 1);
+  const maxCols = info.getMaxColumns();
+
+  // Insere as linhas
+  info.insertRowsBefore(linhaIni, qtd);
+
+  // Copia formato e validações da linha que era a primeira antes da inserção
+  const linhaMolde = linhaIni + qtd;
+  if (linhaMolde <= info.getLastRow()) {
+    const origem = info.getRange(linhaMolde, 1, 1, maxCols);
+    const alvo = info.getRange(linhaIni, 1, qtd, maxCols);
+    origem.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    origem.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+  }
+
+  // Limpa o conteúdo das novas linhas para as colunas de dados (A:J)
+  info.getRange(linhaIni, 1, qtd, 10).clearContent();
+  
+  // Força a aplicação imediata do dropdown de Unidade (Coluna B) com base no EMP (Coluna A)
+  // Mesmo estando vazio, isso "prepara" a célula para quando o usuário digitar o EMP.
+  processarIntervaloAparaB_(info, info.getRange(linhaIni, 1, qtd, 1));
+  
+  if (exibirAlerta) {
+    SpreadsheetApp.getUi().alert("Foram inseridas " + qtd + " linha(s) no topo de INFORMAÇÕES GERAIS.");
+  }
+}
+
+/**
+ * Recalcula e atualiza o indicador de Serviços Atrasados na coluna F
+ * de INFORMAÇÕES GERAIS, com base no CRONOGRAMA (col E) da FASE-OBRA.
+ *
+ * Um serviço é considerado ATRASADO quando:
+ *  - Possui data no CRONOGRAMA (Col E da FASE-OBRA)
+ *  - Essa data é anterior a HOJE
+ *  - NÃO possui Status de aprovação positivo (coluna J da FASE-OBRA vazia/não aprovado)
+ */
+function recalcularServicosAtrasados_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const abaObra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+  const abaInfo = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+  if (!abaObra || !abaInfo) return;
+
+  // Usa resolução dinâmica de colunas
+  const C_OBRA = resolveSheetColumns_(abaObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+  const C_INFO = resolveSheetColumns_(abaInfo, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+
+  // Regex para detectar texto gerado pela fórmula de CRONOGRAMA (ex: "Atrasado 77 dia(s)")
+  const REGEX_ATRASADO = /atrasad/i;
+  // STATUS que indicam serviço já aprovado/concluído — não conta como atraso
+  const STATUS_APROVADOS = /APROVAD|CONCLU|OK|ENTREGUE|EXECUTAD|FINALIZ/i;
+
+  // 1) Lê FASE-OBRA usando getDisplayValues para pegar os valores visíveis das fórmulas
+  const iniObra = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA);
+  const lastObra = obterUltimaLinhaDados_(abaObra, C_OBRA.EMP);
+  if (lastObra < iniObra) return;
+
+  // Lê a largura máxima necessária, baseada no maior índice de coluna usado
+  const maxColObra = Math.max(C_OBRA.STATUS, C_OBRA.CRONOGRAMA, C_OBRA.EMP, C_OBRA.UNI, C_OBRA.SUB);
+  const dadosObra = abaObra.getRange(iniObra, 1, lastObra - iniObra + 1, maxColObra)
+                           .getDisplayValues();
+
+  // 2) Agrupa atrasos por EMP|UNI
+  const mapaAtrasos = new Map(); // chave -> [subcategorias atrasadas]
+  for (let i = 0; i < dadosObra.length; i++) {
+    const emp = String(dadosObra[i][C_OBRA.EMP - 1] || "").trim().toUpperCase();
+    const uni = String(dadosObra[i][C_OBRA.UNI - 1] || "").trim();
+    if (!emp || !uni) continue;
+
+    const cronograma = String(dadosObra[i][C_OBRA.CRONOGRAMA - 1] || "").trim();
+    const status     = String(dadosObra[i][C_OBRA.STATUS - 1] || "").trim();
+    const sub        = String(dadosObra[i][C_OBRA.SUB - 1] || "").trim();
+
+    // Só conta se o CRONOGRAMA mostrar texto de atraso E o status não indicar conclusão
+    if (!REGEX_ATRASADO.test(cronograma)) continue;
+    if (STATUS_APROVADOS.test(status)) continue;
+
+    const chave = `${emp}|${uni}`;
+    if (!mapaAtrasos.has(chave)) mapaAtrasos.set(chave, []);
+    if (sub) mapaAtrasos.get(chave).push(sub);
+  }
+
+  // 3) Lê INFORMAÇÕES GERAIS e grava resumo na coluna RESUMO_PENDENCIAS
+  const iniInfo  = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+  const lastInfo = obterUltimaLinhaDados_(abaInfo, C_INFO.EMP);
+  if (lastInfo < iniInfo) return;
+
+  const maxColInfo = Math.max(C_INFO.EMP, C_INFO.UNI);
+  const dadosInfo = abaInfo.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo)
+                           .getDisplayValues();
+  const novosResumos = [];
+
+  for (let i = 0; i < dadosInfo.length; i++) {
+    const emp   = String(dadosInfo[i][C_INFO.EMP - 1] || "").trim().toUpperCase();
+    const uni   = String(dadosInfo[i][C_INFO.UNI - 1] || "").trim();
+    const chave = `${emp}|${uni}`;
+
+    if (!emp || !uni || !mapaAtrasos.has(chave)) {
+      novosResumos.push([""]);
+      continue;
+    }
+
+    const servicos = [...new Set(mapaAtrasos.get(chave))]; // sem duplicatas
+    const qtd      = servicos.length;
+    const resumo   = `${qtd} SERVIÇO(S) ATRASADO(S):\n${servicos.join(", ")}`;
+    novosResumos.push([resumo]);
+  }
+
+  // Grava em lote
+  abaInfo.getRange(iniInfo, C_INFO.RESUMO_PENDENCIAS, novosResumos.length, 1)
+         .setValues(novosResumos);
+
+  console.log("Indicador de atrasos atualizado: " + novosResumos.filter(r => r[0]).length + " unidade(s) com atraso.");
+}
+
+/**
+ * Wrapper público para chamada via menu Admin ECQUA.
+ */
+  SpreadsheetApp.getActiveSpreadsheet().toast(
+    "✅ Indicador de atrasos atualizado em INFORMAÇÕES GERAIS!",
+    "Automação", 5
+  );
+
+
+/**
+ * Cria e configura a coluna ENVIAR FASE-ENTREGA na aba Informações Gerais.
+ * Chamada pelo menu Admin.
+ */
+function configurarColunaEnviarEntregaInfoGerais() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+  if (!info) return;
+
+  const C = resolveSheetColumns_(info, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+  let colAlvo = C.ENVIAR_ENTREGA;
+
+  const linhaHeader = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS) - 1;
+
+  // Se não existir, cria após RESP ADM (Col 10)
+  if (colAlvo <= 0) {
+    const colBase = 10; // RESP ADM
+    info.insertColumnsAfter(colBase, 1);
+    colAlvo = colBase + 1;
+    info.getRange(linhaHeader, colAlvo).setValue("ENVIAR FASE-ENTREGA");
+    // Formata igual ao vizinho
+    info.getRange(linhaHeader, colBase).copyTo(info.getRange(linhaHeader, colAlvo), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  }
+
+  const ini = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+  const last = info.getLastRow();
+  if (last < ini) return;
+
+  const range = info.getRange(ini, colAlvo, last - ini + 1, 1);
+  const regra = SpreadsheetApp.newDataValidation()
+    .requireValueInList(["SIM", "NÃO"], true)
+    .setAllowInvalid(false)
+    .build();
+  
+  range.setDataValidation(regra);
+  
+  // Preenche vazios com NÃO
+  const vals = range.getValues();
+  const novos = vals.map(r => [r[0] || "NÃO"]);
+  range.setValues(novos);
+
+  SpreadsheetApp.getUi().alert("✅ Coluna ENVIAR FASE-ENTREGA configurada com sucesso em INF. GERAIS na coluna " + colAlvo);
+}
+
+/**
+ * Cria e configura a coluna STATUS OBRA na aba Informações Gerais.
+ * Chamada pelo menu Admin.
+ */
+function configurarColunaStatusObraInfoGerais() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+  if (!info) return;
+
+  const C = resolveSheetColumns_(info, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+  let colAlvo = C.STATUS_OBRA;
+
+  const linhaHeader = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS) - 1;
+
+  // Se não existir, cria após RESP ADM ou final
+  if (colAlvo <= 0) {
+    const lastCol = info.getLastColumn();
+    info.insertColumnsAfter(lastCol, 1);
+    colAlvo = lastCol + 1;
+    info.getRange(linhaHeader, colAlvo).setValue("STATUS OBRA");
+    // Formata igual ao vizinho
+    info.getRange(linhaHeader, lastCol).copyTo(info.getRange(linhaHeader, colAlvo), SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+  }
+
+  const ini = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+  const last = info.getLastRow();
+  if (last < ini) return;
+
+  const range = info.getRange(ini, colAlvo, last - ini + 1, 1);
+  const regra = SpreadsheetApp.newDataValidation()
+    .requireValueInList(["ATIVA", "FINALIZADA"], true)
+    .setAllowInvalid(false)
+    .build();
+  
+  range.setDataValidation(regra);
+  
+  ss.toast("Sincronizando status atuais das unidades...", "⏳ Aguarde");
+  sincronizarStatusObraGeral_();
+
+  SpreadsheetApp.getUi().alert("✅ Coluna STATUS OBRA configurada e sincronizada com sucesso!");
+}
