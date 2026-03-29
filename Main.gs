@@ -20,7 +20,7 @@ function onOpen() {
   ui.createMenu("⚙️ Admin ECQUA")
     .addItem("☑️ Configurar coluna de envio (checkbox)", "configurarColunaEnvioFaseEntrega")
     .addItem("⏰ Criar acionador fechamento diário (23h)", "criarAcionadorSincronizacaoFinalDoDia")
-    .addItem("🌙 Criar acionador atrasos diários (01h)", "criarAcionadorAtrasosDiarios")
+    .addItem("🌙 Criar acionador sincronização completa (01h)", "configurarRotinaSincronizacaoMadrugada")
     .addItem("🔄 Forçar Atualização desta Aba (A->B)", "atualizarTodaAAbaAtiva")
     .addItem("💰 Recalcular Verba Teto (W -> X)", "recalcularTodasVerbasTetoFaseObra")
     .addItem("📆 Recalcular indicador de cronograma (OBRA E)", "sincronizarTodosIndicadoresCronogramaFaseObra")
@@ -89,8 +89,11 @@ function atualizarTodaAAbaAtiva() {
  * Cria (ou recria) o acionador que executa às 1h da manhã diariamente.
  * Chame esta função UMA VEZ pelo menu Admin ECQUA.
  */
-function criarAcionadorAtrasosDiarios() {
-  const HANDLER = "executarAtualizacaoAtrasosNocturna";
+/**
+ * Cria (ou recria) o acionador que executa a sincronização completa às 1h da manhã.
+ */
+function configurarRotinaSincronizacaoMadrugada() {
+  const HANDLER = "executarSincronizacaoGlobalMadrugada_";
 
   // Remove acionadores anteriores com o mesmo handler para evitar duplicação
   ScriptApp.getProjectTriggers()
@@ -105,9 +108,9 @@ function criarAcionadorAtrasosDiarios() {
     .create();
 
   SpreadsheetApp.getUi().alert(
-    "✅ Acionador criado!\n" +
-    "O indicador de atrasos será atualizado automaticamente\n" +
-    "todos os dias por volta de 01:00 (fuso do projeto)."
+    "✅ Acionador de Sincronização Completa criado!\n" +
+    "Toda a planilha (Pedidos, Atrasos, Ocorrências e Informações Gerais)\n" +
+    "será atualizada automaticamente todos os dias às 01:00."
   );
 }
 
@@ -115,14 +118,34 @@ function criarAcionadorAtrasosDiarios() {
  * Função executada pelo acionador noturno às 1h.
  * Roda a sincronização global + recálculo de atrasos sem exibir alertas de UI.
  */
-function executarAtualizacaoAtrasosNocturna() {
+/**
+ * Função principal executada diariamente pelo acionador noturno (01h).
+ * Consolida todas as sincronias pesadas e recálculos necessários.
+ */
+function executarSincronizacaoGlobalMadrugada_() {
   executarComDocumentLock_(function() {
-    // 1) Sincronização completa (Pedidos, Entrega, Preliminar)
-    executarSincronizacaoFinalDoDia();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    console.log("Iniciando Rotina Global de Madrugada (01:00)...");
 
-    // 2) Recálculo do indicador de atrasos em INFO GERAIS
-    recalcularServicosAtrasados_();
-  }, 120000);
+    // 1) Push para Pedidos: Gera novas linhas de serviços na PEDIDOS-GERAL vindas da OBRA
+    try { sincronizarTodosPedidosHousi(); } catch(e) { console.error("Erro em sincronizarTodosPedidosHousi: " + e.message); }
+
+    // 2) Sincronização Base: Pull Status Pedidos, Sync InfoGerais <-> Preliminar
+    try { executarSincronizacaoFinalDoDia(); } catch(e) { console.error("Erro em executarSincronizacaoFinalDoDia: " + e.message); }
+
+    // 3) Ocorrências: Sincroniza contagem de ocorrências abertas para a Preliminar
+    try { sincronizarOcorrenciasAbertasParaPreliminar_(null, false); } catch(e) { console.error("Erro em sincronizarOcorrenciasAbertasParaPreliminar: " + e.message); }
+
+    // 4) Cronograma FASE-OBRA: Recalcula Semanas e Indicadores (E)
+    try { sincronizarTodaAbaObraSemanasCronograma(); } catch(e) { console.error("Erro em sincronizarTodaAbaObraSemanasCronograma: " + e.message); }
+    try { sincronizarTodosIndicadoresCronogramaFaseObra(); } catch(e) { console.error("Erro em sincronizarTodosIndicadoresCronogramaFaseObra: " + e.message); }
+
+    // 5) Consolidated Reports: Recalcula indicador de atrasos e Status Obra em INFO GERAIS
+    try { recalcularServicosAtrasados_(); } catch(e) { console.error("Erro em recalcularServicosAtrasados: " + e.message); }
+    try { sincronizarStatusObraGeral_(); } catch(e) { console.error("Erro em sincronizarStatusObraGeral: " + e.message); }
+
+    console.log("✅ Rotina Global de Madrugada concluída com sucesso!");
+  }, 300000); // 5 minutos de lock para garantir execução completa
 }
 
 /**
