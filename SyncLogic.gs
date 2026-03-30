@@ -1028,7 +1028,7 @@ function sincronizarPedidosParaFaseObra_(e) {
     const numRows = range.getLastRow() - rowStart + 1;
     if (numRows <= 0) return;
 
-    // Obtém Status (H), Fornecedor (I) e ChaveID (AJ) do Pedidos
+    // Obtém Status (I), Fornecedor (J) e ChaveID do Pedidos
     const dadosEdicao = abaPedidos.getRange(rowStart, 1, numRows, abaPedidos.getLastColumn()).getValues();
     
     // Mapeia chaves para novos valores vindos do Pedidos
@@ -1299,55 +1299,82 @@ function obterMapaDataLote_(ss) {
 }
 
 /**
- * Calcula e sincroniza a semana do cronograma na Fase Obra.
+ * [COMBINADA - PERFORMANCE] Calcula e grava SEMANA CRONOGRAMA e SEMANA DO MÊS
+ * em uma única execução: 1 Lock, 1 leitura da PRELIMINAR, 1 leitura da OBRA.
+ * Chamada pelo onEdit e pelos wrappers de recalculo em lote.
+ *
+ * @param {Object} e  - Evento do onEdit (ou fake event para lote).
+ * @param {boolean} calcCrono   - Se true, calcula SEMANA CRONOGRAMA.
+ * @param {boolean} calcMes     - Se true, calcula SEMANA DO MÊS.
  */
-function sincronizarSemanasCronogramaObra_(e) {
+function sincronizarSemanasObraCombinada_(e, calcCrono, calcMes) {
   executarComDocumentLock_(function() {
     if (!e || !e.range) return;
     const sheetObra = e.range.getSheet();
-    const rowStart = e.range.getRow();
-    const numRows = e.range.getNumRows();
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    
-    const C_OBRA = resolveSheetColumns_(sheetObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
-    if (C_OBRA.DATA_INICIO_PLANEJADO <= 0 || C_OBRA.SEMANA <= 0) {
-      const msg = "Não foi possível calcular SEMANA CRONOGRAMA: cabeçalhos de Data Início Planejado e/ou Semana não encontrados em FASE-OBRA.";
-      console.error(msg);
-      ss.toast(msg, "⚠️ Configuração ausente", 6);
-      return;
-    }
+    const rowStart  = e.range.getRow();
+    const numRows   = e.range.getNumRows();
+    const ss        = SpreadsheetApp.getActiveSpreadsheet();
 
-    const dataLoteMap = obterMapaDataLote_(ss);
-    const rangeEdicao = sheetObra.getRange(rowStart, 1, numRows, Math.max(C_OBRA.UNI, C_OBRA.DATA_INICIO_PLANEJADO));
-    const dados = rangeEdicao.getValues();
-    const saidaSemana = [];
+    const C = resolveSheetColumns_(sheetObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+
+    // Valida colunas necessárias
+    const precisaCrono = calcCrono && C.DATA_INICIO_PLANEJADO > 0 && C.SEMANA > 0;
+    const precisaMes   = calcMes   && C.DATA_INICIO_PLANEJADO > 0 && C.SEMANA_MES > 0;
+    if (!precisaCrono && !precisaMes) return;
+
+    // --- 1 LEITURA: PRELIMINAR (só necessária para SEMANA CRONOGRAMA) ---
+    const dataLoteMap = precisaCrono ? obterMapaDataLote_(ss) : new Map();
+
+    // --- 1 LEITURA: FASE-OBRA ---
+    const numCols = Math.max(C.EMP, C.UNI, C.DATA_INICIO_PLANEJADO);
+    const dados   = sheetObra.getRange(rowStart, 1, numRows, numCols).getValues();
+
+    const saidaCrono = precisaCrono ? [] : null;
+    const saidaMes   = precisaMes   ? [] : null;
 
     for (let i = 0; i < numRows; i++) {
-      const emp = String(dados[i][C_OBRA.EMP - 1]).trim().toUpperCase();
-      const uni = String(dados[i][C_OBRA.UNI - 1]).trim();
-      const dataInicio = normalizarDataSomenteDia_(dados[i][C_OBRA.DATA_INICIO_PLANEJADO - 1]);
-      
-      const chave = `${emp}|${uni}`;
-      const dataLote = normalizarDataSomenteDia_(dataLoteMap.get(chave));
+      const dataInicio = dados[i][C.DATA_INICIO_PLANEJADO - 1];
+      const dtNorm     = normalizarDataSomenteDia_(dataInicio);
 
-      if (dataInicio && dataLote) {
-        const diffMs = dataInicio.getTime() - dataLote.getTime();
-        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        // Regra: até 7 dias = 1ª semana, até 14 dias = 2ª semana, etc.
-        const numSemana = Math.max(1, Math.ceil(diffDays / 7)); 
-        // Se diffDays <= 0, ceil(0) = 0 -> max(1, 0) = 1.
-        // Se diffDays = 7, ceil(7/7) = 1.
-        // Se diffDays = 8, ceil(8/7) = 2.
-        
-        saidaSemana.push([numSemana + "ª semana"]);
-      } else {
-        saidaSemana.push([""]);
+      // -- SEMANA CRONOGRAMA --
+      if (saidaCrono !== null) {
+        if (dtNorm) {
+          const emp      = String(dados[i][C.EMP - 1]).trim().toUpperCase();
+          const uni      = String(dados[i][C.UNI - 1]).trim();
+          const dataLote = normalizarDataSomenteDia_(dataLoteMap.get(`${emp}|${uni}`));
+          if (dataLote) {
+            const diffDays = Math.floor((dtNorm.getTime() - dataLote.getTime()) / 86400000);
+            saidaCrono.push([Math.max(1, Math.ceil(diffDays / 7)) + "ª semana"]);
+          } else {
+            saidaCrono.push([""]);
+          }
+        } else {
+          saidaCrono.push([""]);
+        }
+      }
+
+      // -- SEMANA DO MÊS --
+      if (saidaMes !== null) {
+        saidaMes.push([calcularSemanaMes_(dataInicio)]);
       }
     }
 
-    sheetObra.getRange(rowStart, C_OBRA.SEMANA, numRows, 1).setValues(saidaSemana);
+    // --- 2 ESCRITAS (no máximo) ---
+    if (saidaCrono !== null) {
+      sheetObra.getRange(rowStart, C.SEMANA,     numRows, 1).setValues(saidaCrono);
+    }
+    if (saidaMes !== null) {
+      sheetObra.getRange(rowStart, C.SEMANA_MES, numRows, 1).setValues(saidaMes);
+    }
   });
+}
+
+/**
+ * Compat: mantido para chamadas externas que usem esta assinatura individualmente.
+ * Redireciona para a função combinada calculando apenas SEMANA CRONOGRAMA.
+ */
+function sincronizarSemanasCronogramaObra_(e) {
+  sincronizarSemanasObraCombinada_(e, true, false);
 }
 
 /**
@@ -1420,6 +1447,100 @@ function sincronizarTodaAbaObraSemanasCronograma() {
   };
   sincronizarSemanasCronogramaObra_(fakeEvent);
   ss.toast("Semana do cronograma recalculada para toda a aba!", "Sucesso");
+}
+
+/**
+ * Calcula a "Semana do Mês" de uma data, com semanas de Segunda a Domingo.
+ *
+ * Nomenclatura: "NªS Mmm" (ex: "4ªS Mar").
+ * Quando a semana cruza dois meses: "NªS Mmm/ 1ªS Mmm2" (ex: "5ªS Mar/ 1ªS Abr").
+ *
+ * @param {Date|string} dataInicio - Data de início planejado.
+ * @returns {string} A representação da semana do mês.
+ */
+function calcularSemanaMes_(dataInicio) {
+  const dt = normalizarDataSomenteDia_(dataInicio);
+  if (!dt) return "";
+
+  const MESES = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
+  // Encontra a Segunda-feira da semana contendo 'dt'
+  // getDay(): Dom=0, Seg=1, ..., Sab=6
+  const jsDay = dt.getDay();
+  const diasDesdeSegunda = (jsDay === 0) ? 6 : (jsDay - 1);
+
+  const weekMon = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate() - diasDesdeSegunda);
+  const weekSun = new Date(weekMon.getFullYear(), weekMon.getMonth(), weekMon.getDate() + 6);
+
+  /**
+   * Retorna o número sequencial da semana dentro do mês para uma Segunda-feira.
+   * Considera apenas as Segundas-feiras que caem dentro do próprio mês.
+   * Ex: Março 2026, primeira Segunda = dia 2 → semana 1.
+   */
+  function numSemanaNoMes(seg) {
+    const ano = seg.getFullYear();
+    const mes = seg.getMonth();
+    const diaDoMes = seg.getDate();
+
+    // Descobre o dia da semana do dia 1 do mês (para achar a primeira Segunda)
+    const jsDayPrimeiro = new Date(ano, mes, 1).getDay();
+    // Quantos dias até a próxima Segunda (0 se o dia 1 for Segunda)
+    const diasAteSegunda = (jsDayPrimeiro === 1) ? 0 :
+                            (jsDayPrimeiro === 0) ? 1 :
+                            (8 - jsDayPrimeiro);
+    const primeiraSeg = 1 + diasAteSegunda;
+
+    // N-ésima Segunda contando a partir da primeira Segunda do mês
+    return Math.floor((diaDoMes - primeiraSeg) / 7) + 1;
+  }
+
+  const mesMon = weekMon.getMonth();
+  const mesSun = weekSun.getMonth();
+  const anoMon = weekMon.getFullYear();
+  const anoSun = weekSun.getFullYear();
+
+  if (mesMon === mesSun && anoMon === anoSun) {
+    // Semana inteira dentro do mesmo mês
+    const num = numSemanaNoMes(weekMon);
+    return `${num}ªS ${MESES[mesMon]}`;
+  } else {
+    // Semana cruza dois meses:
+    // - Para o mês da Segunda: é a N-ésima semana daquele mês
+    // - Para o mês do Domingo: sempre será a 1ª semana (primeira semana que contém dias daquele mês)
+    const numInicio = numSemanaNoMes(weekMon);
+    return `${numInicio}ªS ${MESES[mesMon]}/ 1ªS ${MESES[mesSun]}`;
+  }
+}
+
+/**
+ * Calcula e grava a coluna SEMANA DO MÊS nas linhas editadas da FASE-OBRA.
+ * Disparado por onEdit quando DATA_INICIO_PLANEJADO é alterada.
+ */
+/**
+ * Compat: redireciona para a função combinada calculando apenas SEMANA DO MÊS.
+ */
+function sincronizarSemanaMesObra_(e) {
+  sincronizarSemanasObraCombinada_(e, false, true);
+}
+
+/**
+ * Recalcula a coluna SEMANA DO MÊS para toda a aba FASE-OBRA em lote.
+ */
+function sincronizarTodaAbaObraSemanaMes() {
+  const ss   = SpreadsheetApp.getActiveSpreadsheet();
+  const obra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+  if (!obra) return;
+
+  const last = obra.getLastRow();
+  const ini  = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA);
+  if (last < ini) return;
+
+  sincronizarSemanasObraCombinada_(
+    { range: obra.getRange(ini, 1, last - ini + 1, 1), source: ss },
+    false,   // só SEMANA DO MÊS
+    true
+  );
+  ss.toast("✅ Semana do Mês recalculada para toda a FASE-OBRA!", "Sucesso", 5);
 }
 
 /**

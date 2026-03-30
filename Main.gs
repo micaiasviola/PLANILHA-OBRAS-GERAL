@@ -31,8 +31,10 @@ function onOpen() {
     .addItem("🚚 Criar Coluna Envio para Entrega (INF. GERAIS)", "configurarColunaEnviarEntregaInfoGerais")
     .addItem("📊 Criar Coluna Status Obra (INF. GERAIS)", "configurarColunaStatusObraInfoGerais")
     .addItem("📆 Criar Colunas Cronograma (FASE-OBRA)", "configurarColunasCronogramaFaseObra")
+    .addItem("📅 Criar Coluna Semana do Mês (FASE-OBRA)", "configurarColunaSemanaMesFaseObra")
     .addSeparator()
     .addItem("📆 Recalcular Semanas Cronograma (OBRA)", "sincronizarTodaAbaObraSemanasCronograma")
+    .addItem("📅 Recalcular Semanas do Mês (OBRA)", "sincronizarTodaAbaObraSemanaMes")
     .addToUi();
 }
 

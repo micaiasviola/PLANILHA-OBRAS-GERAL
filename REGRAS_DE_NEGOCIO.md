@@ -59,7 +59,7 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
     *   **Cálculo**: `Math.ceil((Data Planejada - Data Lote) / 7)`.
     *   Exemplo: Se o lote é 27/03, o dia 03/04 (7º dia) é 1ª semana. O dia 09/04 (13º dia) é 2ª semana.
 *   **Gatilho Fase Entrega**: O usuário pode marcar Ativo um Dropdown customizado `"ENVIAR P/ ENTREGA"`. Ao fazer isso massivamente, o Automator ("Sincronizar Envios para Fase-Entrega" via UI) copiará a Unidade para a aba final.
-*   **IDs Estáveis UUID (A Magia)**: Ao criar serviços ou transferi-los prara Pedidos, o script gera silenciosamente uma **CHAVE ESTATICA UUID (Coluna Especial Técnica AJ)**. É por essa chave garantida (e não mais por nome do Empreendimento + Serviço) que o script sabe quem é quem na tabela cruzada. Nunca delete as Chaves da extremidade final das colunas!.
+*   **IDs Estáveis UUID (A Magia)**: Ao criar serviços ou transferi-los prara Pedidos, o script gera silenciosamente uma **CHAVE ESTATICA UUID (Coluna Especial Técnica AY)**. É por essa chave garantida (e não mais por nome do Empreendimento + Serviço) que o script sabe quem é quem na tabela cruzada. Nunca delete as Chaves da extremidade final das colunas!.
 
 ### 4.4. PEDIDOS-GERAL (Logística e Suprimentos)
 *   **Papel**: Visão focada do departamento de compras/recebimentos. Basicamente os serviços com `ATRELADO="HOUSI"` listados.

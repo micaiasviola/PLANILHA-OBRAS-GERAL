@@ -39,7 +39,7 @@ const CONFIG = {
       DATA_AGENDADO_ADM: 13,   // M
       VERBA_HOUSI: 23, // W
       VERBA_TETO: 24,  // X
-      CHAVE: 36        // AJ
+      CHAVE: 51        // AY
     },
 
     // PEDIDOS-GERAL
@@ -128,7 +128,8 @@ const CONFIG = {
       DATA_SOLICITADO_OPR:  ["DATA SOLICITADO ENTREGA OPR"],
       DATA_AGENDADO_ADM:    ["DATA ENTREGA ADM"],
       DATA_INICIO_PLANEJADO: ["DATA INÍCIO PLANEJADO EXECUÇÃO", "DATA INICIO PLANEJADO", "DATA INICIO"],
-      SEMANA:               ["SEMANA CRONOGRAMA", "SEMANA"],
+      SEMANA_MES:           ["SEMANA DO MÊS", "SEMANA DO MES", "SEMANA MES"],
+      SEMANA:               ["SEMANA CRONOGRAMA", "SEMANA CRONO", "SEMANA"],
       // Colunas ainda sem cabeçalho → fallback fixo
       VERBA_HOUSI:          23,  // W (fixo)
       VERBA_TETO:           24,  // X (fixo)

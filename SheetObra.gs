@@ -49,9 +49,9 @@ function handleObraEdit(e) {
     sincronizarFaseObraParaFaseEntregaPorChave_(e, colChaveEntrega);
   }
 
-  // 7) Semana do Cronograma (Cálculo automático baseado na Data Início)
+  // 7) Semana do Cronograma + Semana do Mês — COMBINADAS em 1 lock, 1 leitura, 2 escritas
   if (C.DATA_INICIO_PLANEJADO > 0 && intervaloInterceptaColuna(range, C.DATA_INICIO_PLANEJADO)) {
-    sincronizarSemanasCronogramaObra_(e);
+    sincronizarSemanasObraCombinada_(e, true, C.SEMANA_MES > 0);
   }
 }
 
@@ -343,4 +343,52 @@ function configurarColunasCronogramaFaseObra() {
   }
 
   SpreadsheetApp.getUi().alert("✅ Colunas configuradas em FASE-OBRA: " + criadas.join(", "));
+}
+/**
+ * Cria e configura a coluna SEMANA DO MÊS na aba FASE-OBRA,
+ * inserindo-a imediatamente antes da coluna SEMANA CRONOGRAMA.
+ * Chamada pelo menu Admin ECQUA.
+ */
+function configurarColunaSemanaMesFaseObra() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const obra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+  if (!obra) return;
+
+  limparCacheResolucaoColunas_(); // garante leitura fresca
+  const C = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+  const linhasHeader = [1, 2, obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA) - 1].filter(v => v > 0);
+
+  // Verifica se já existe
+  if (C.SEMANA_MES > 0) {
+    SpreadsheetApp.getUi().alert("A coluna SEMANA DO MÊS já existe na FASE-OBRA (coluna " + C.SEMANA_MES + ").");
+    return;
+  }
+
+  // Posiciona antes de SEMANA CRONOGRAMA; se não existir, usa o final da planilha
+  let colBase = C.SEMANA > 0 ? C.SEMANA - 1 : obra.getLastColumn();
+
+  obra.insertColumnsAfter(colBase, 1);
+  const colNova = colBase + 1;
+
+  // Grava o cabeçalho em todas as possíveis linhas de header
+  for (const lh of linhasHeader) {
+    const cellHeader = obra.getRange(lh, colNova);
+    // Copia formato do vizinho esquerdo
+    obra.getRange(lh, colBase).copyTo(cellHeader, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+    if (lh === linhasHeader[linhasHeader.length - 1]) {
+      cellHeader.setValue("SEMANA DO MÊS");
+    }
+  }
+
+  // Limpa cache para que resolveSheetColumns_ encontre a nova coluna
+  limparCacheResolucaoColunas_();
+
+  // Popula toda a aba com o cálculo inicial
+  ss.toast("Calculando SEMANA DO MÊS para toda a FASE-OBRA...", "⏳ Aguarde", 8);
+  sincronizarTodaAbaObraSemanaMes();
+
+  SpreadsheetApp.getUi().alert(
+    "✅ Coluna SEMANA DO MÊS criada na posição " + colNova + "\n" +
+    "Ela será atualizada automaticamente ao editar DATA INÍCIO PLANEJADO EXECUÇÃO."
+  );
 }
