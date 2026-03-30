@@ -135,9 +135,9 @@ function gerarTemplatesPendentesFaseObra() {
 
     ss.toast("Pesquisando novas unidades para iniciar Obras...", "Aguarde", 5);
 
-    const fpColOprParaObra = obterColunaRespOprFasePreliminar_(pre);
-    const fpColAdmParaObra = obterColunaRespAdmFasePreliminar_(pre);
-    const fpColEnergiaParaObra = obterColunaEnergiaLiberacaoObraFasePreliminar_(pre);
+    const C_PRE = resolveSheetColumns_(pre, CONFIG.HEADERS_COLS.PRELIMINAR, CONFIG.COLUMNS.PRELIMINAR);
+    const fpColOprParaObra = C_PRE.RESP_OPR;
+    const fpColAdmParaObra = C_PRE.RESP_ADM;
 
     // 1) Carrega unidades existentes na OBRA de uma vez (O(1) chamadas à API)
     const C_OBRA = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
@@ -197,7 +197,6 @@ function gerarTemplatesPendentesFaseObra() {
     if (lastColPre < 1) return;
 
     const dadosPre = pre.getRange(preIni, 1, preLast - preIni + 1, lastColPre).getValues();
-    const C_PRE = resolveSheetColumns_(pre, CONFIG.HEADERS_COLS.PRELIMINAR, CONFIG.COLUMNS.PRELIMINAR);
 
     let unidadesAbertas = 0;
     const arrayLoteCompleto = [];

@@ -911,7 +911,8 @@ function sincronizarOcorrenciasAbertasParaPreliminar_(chavesAlvo, exibirAlerta) 
   const lastPre = abaPre.getLastRow();
   if (lastPre < iniPre) return;
 
-  const rangePre = abaPre.getRange(iniPre, 1, lastPre - iniPre + 1, Math.max(C_PRE.EMP, C_PRE.UNI));
+  const maxColPre = Math.max(C_PRE.EMP || 0, C_PRE.UNI || 0, C_PRE.RESUMO_OCORRENCIAS || 0, 1);
+  const rangePre = abaPre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre);
   const dadosPre = rangePre.getValues();
   const saidaOco = [];
 
@@ -929,7 +930,11 @@ function sincronizarOcorrenciasAbertasParaPreliminar_(chavesAlvo, exibirAlerta) 
     saidaOco.push([qtd > 0 ? qtd + " OCORRÊNCIA(S) ABERTAS" : "LIMPO"]);
   }
 
-  abaPre.getRange(iniPre, C_PRE.RESUMO_OCORRENCIAS, saidaOco.length, 1).setValues(saidaOco);
+  if (C_PRE.RESUMO_OCORRENCIAS > 0) {
+    abaPre.getRange(iniPre, C_PRE.RESUMO_OCORRENCIAS, saidaOco.length, 1).setValues(saidaOco);
+  } else {
+    console.warn("Coluna RESUMO_OCORRENCIAS não encontrada em FASE-PRELIMINAR. Ignorando escrita.");
+  }
   if (exibirAlerta) ss.toast("Sincronização de ocorrências concluída!", "Sucesso");
 }
 
@@ -949,7 +954,8 @@ function sincronizarInformacoesGeraisDesdePreliminar_(exibirAlerta) {
   const lastPre = pre.getLastRow();
   if (lastPre < iniPre) return;
 
-  const dadosPre = pre.getRange(iniPre, 1, lastPre - iniPre + 1, Math.max(C_PRE.EMP, C_PRE.UNI, C_PRE.RESUMO_PENDENCIAS, C_PRE.RESUMO_OCORRENCIAS)).getValues();
+  const maxColPre = Math.max(C_PRE.EMP || 0, C_PRE.UNI || 0, C_PRE.RESUMO_PENDENCIAS || 0, C_PRE.RESUMO_OCORRENCIAS || 0, 1);
+  const dadosPre = pre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre).getValues();
   
   const mapaDados = new Map();
   for (let i = 0; i < dadosPre.length; i++) {
@@ -957,8 +963,8 @@ function sincronizarInformacoesGeraisDesdePreliminar_(exibirAlerta) {
     const uni = String(dadosPre[i][C_PRE.UNI - 1]).trim();
     if (emp && uni) {
       mapaDados.set(`${emp}|${uni}`, {
-        pendencias: dadosPre[i][C_PRE.RESUMO_PENDENCIAS - 1],
-        ocorrencias: dadosPre[i][C_PRE.RESUMO_OCORRENCIAS - 1]
+        pendencias: C_PRE.RESUMO_PENDENCIAS > 0 ? dadosPre[i][C_PRE.RESUMO_PENDENCIAS - 1] : "",
+        ocorrencias: C_PRE.RESUMO_OCORRENCIAS > 0 ? dadosPre[i][C_PRE.RESUMO_OCORRENCIAS - 1] : ""
       });
     }
   }
