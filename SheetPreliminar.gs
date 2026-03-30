@@ -243,3 +243,33 @@ function configurarColunaEnviarObraPreliminar() {
 
   SpreadsheetApp.getUi().alert("✅ Coluna FASE-OBRA (Ativador Manual) configurada na posição " + colAlvo);
 }
+
+/**
+ * Sincroniza dados editados na PRELIMINAR de volta para INFORMAÇÕES GERAIS.
+ * Função chamada pelo handler onEdit de FASE-PRELIMINAR.
+ */
+function sincronizarInformacoesGeraisPorEdicaoPreliminar_(e) {
+  if (!e || !e.range) return;
+
+  const pre = e.range.getSheet();
+  const C_PRE = resolveSheetColumns_(pre, CONFIG.HEADERS_COLS.PRELIMINAR, CONFIG.COLUMNS.PRELIMINAR);
+  const linhaIni = obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR);
+  const primeiraLinha = Math.max(e.range.getRow(), linhaIni);
+  const numLinhas = e.range.getLastRow() - primeiraLinha + 1;
+  if (numLinhas <= 0) return;
+
+  // Coleta as chaves EMP|UNI das linhas editadas
+  const maxCol = Math.max(C_PRE.EMP, C_PRE.UNI);
+  const dados = pre.getRange(primeiraLinha, 1, numLinhas, maxCol).getDisplayValues();
+  const chavesAlvo = new Set();
+
+  for (let i = 0; i < numLinhas; i++) {
+    const emp = String(dados[i][C_PRE.EMP - 1] || "").trim().toUpperCase();
+    const uni = String(dados[i][C_PRE.UNI - 1] || "").trim();
+    if (emp && uni) chavesAlvo.add(`${emp}|${uni}`);
+  }
+
+  if (chavesAlvo.size > 0) {
+    sincronizarInformacoesGeraisDesdePreliminar_(false);
+  }
+}

@@ -17,16 +17,28 @@ function obterLinhaInicialPorAba(nomeAba) {
 }
 
 /**
+ * Flag de reentrância: evita deadlock quando uma função com lock
+ * chama outra função que também tenta adquirir lock.
+ */
+let _lockAtivo_ = false;
+
+/**
  * Executa uma função com um lock de documento para evitar concorrência.
+ * Reentrante: se já estiver dentro de um lock, executa diretamente.
  */
 function executarComDocumentLock_(callback, timeoutMs = 20000) {
+  // Se já estamos dentro de um lock, executa direto (reentrância segura)
+  if (_lockAtivo_) return callback();
+
   const lock = LockService.getDocumentLock();
   if (!lock.tryLock(timeoutMs)) {
     throw new Error("Não foi possível obter lock do documento. Tente novamente em instantes.");
   }
+  _lockAtivo_ = true;
   try {
     return callback();
   } finally {
+    _lockAtivo_ = false;
     lock.releaseLock();
   }
 }

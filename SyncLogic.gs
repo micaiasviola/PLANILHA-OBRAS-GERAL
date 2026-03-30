@@ -18,71 +18,107 @@ function sincronizarPedidosHousiPorEdicao_(e) {
     const C_OBRA = resolveSheetColumns_(sheetObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
     const C_PED = resolveSheetColumns_(abaPedidos, CONFIG.HEADERS_COLS.PEDIDOS, CONFIG.COLUMNS.PEDIDOS);
 
-    // Obtém dados de todas as linhas editadas da obra
+    // 1) Lê dados da obra em batch
     const dadosObra = sheetObra.getRange(rowStart, 1, numRows, C_OBRA.CHAVE).getValues();
-    const mapaPedidos = obterMapaPedidosPorChave_(abaPedidos);
-    let proximaLinhaLivre = -1;
 
-    const linhasParaDeletar = [];
-
-    for (let i = 0; i < numRows; i++) {
-        const rowObra = rowStart + i;
-        const vals = dadosObra[i];
-        const atrelado = String(vals[C_OBRA.ATRELADO - 1]).trim().toUpperCase();
-        const chaveID_Row = String(vals[C_OBRA.CHAVE - 1] || "").trim();
-
-        // Se o atrelado não for HOUSI, remove da aba Pedidos se existir
-        if (atrelado !== "HOUSI") {
-          const linhaExistente = mapaPedidos.get(chaveID_Row);
-          if (linhaExistente > 0) {
-            linhasParaDeletar.push(linhaExistente);
-            mapaPedidos.delete(chaveID_Row);
-          }
-          continue;
-        }
-
-        // Dados da linha
-        const emp = String(vals[C_OBRA.EMP - 1]).trim();
-        const uni = String(vals[C_OBRA.UNI - 1]).trim();
-        const cat = String(vals[C_OBRA.CAT - 1]).trim();
-        const sub = String(vals[C_OBRA.SUB - 1]).trim();
-        if (!emp || !uni || !cat || !sub) continue;
-
-        let chaveID = vals[C_OBRA.CHAVE - 1];
-        if (!chaveID || String(chaveID).startsWith("FO_ROW_")) {
-          chaveID = gerarUUID_();
-          sheetObra.getRange(rowObra, C_OBRA.CHAVE).setValue(chaveID);
-        }
-
-        let linhaPed = mapaPedidos.get(String(chaveID).trim()) || -1;
-        let rowParaAtualizar;
-        
-        if (linhaPed <= 0) {
-          if (proximaLinhaLivre < 0) proximaLinhaLivre = obterPrimeiraLinhaLivrePedidos_(abaPedidos);
-          linhaPed = proximaLinhaLivre++;
-          garantirLinhasAte_(abaPedidos, linhaPed);
-          rowParaAtualizar = new Array(C_PED.CHAVE).fill("");
-        } else {
-          rowParaAtualizar = abaPedidos.getRange(linhaPed, 1, 1, C_PED.CHAVE).getValues()[0];
-        }
-        
-        // Atualiza campos
-        rowParaAtualizar[C_PED.EMP - 1] = emp;
-        rowParaAtualizar[C_PED.UNI - 1] = uni;
-        if (C_PED.OPR > 0) rowParaAtualizar[C_PED.OPR - 1] = vals[C_OBRA.OPR - 1];
-        if (C_PED.ADM > 0) rowParaAtualizar[C_PED.ADM - 1] = vals[C_OBRA.ADM - 1];
-        if (C_PED.TIPO > 0) rowParaAtualizar[C_PED.TIPO - 1] = vals[C_OBRA.TIPO - 1];
-        if (C_PED.CAT > 0) rowParaAtualizar[C_PED.CAT - 1] = cat;
-        if (C_PED.SUB > 0) rowParaAtualizar[C_PED.SUB - 1] = sub;
-        if (C_PED.DATA_SOLICITADO_OPR > 0) rowParaAtualizar[C_PED.DATA_SOLICITADO_OPR - 1] = vals[C_OBRA.DATA_SOLICITADO_OPR - 1] || null;
-        if (C_PED.DATA_AGENDADO_ADM > 0) rowParaAtualizar[C_PED.DATA_AGENDADO_ADM - 1] = vals[C_OBRA.DATA_AGENDADO_ADM - 1] || null;
-        rowParaAtualizar[C_PED.CHAVE - 1] = chaveID;
-
-        // Flush por linha para garantir integridade individual
-        abaPedidos.getRange(linhaPed, 1, 1, C_PED.CHAVE).setValues([rowParaAtualizar]);
+    // 2) Lê TODOS os pedidos existentes em batch (1 chamada)
+    const iniPed = obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS);
+    const lastPed = abaPedidos.getLastRow();
+    let dadosPedAll = [];
+    const mapaPedIdx = new Map(); // chave → índice no array
+    if (lastPed >= iniPed) {
+      dadosPedAll = abaPedidos.getRange(iniPed, 1, lastPed - iniPed + 1, C_PED.CHAVE).getValues();
+      for (let j = 0; j < dadosPedAll.length; j++) {
+        const ch = String(dadosPedAll[j][C_PED.CHAVE - 1] || "").trim();
+        if (ch) mapaPedIdx.set(ch, j);
+      }
     }
 
-    // Deleta ordão de baixo para cima para não quebrar índices
+    const linhasParaDeletar = [];
+    const chavesGeradas = []; // [linhaObra, chaveID]
+    let proximaLinhaLivre = -1;
+    const linhasParaEscreverNoPedido = []; // [linhaDestinoSheet, arrayDados]
+
+    for (let i = 0; i < numRows; i++) {
+      const rowObra = rowStart + i;
+      const vals = dadosObra[i];
+      const atrelado = String(vals[C_OBRA.ATRELADO - 1]).trim().toUpperCase();
+      const chaveID_Row = String(vals[C_OBRA.CHAVE - 1] || "").trim();
+
+      if (atrelado !== "HOUSI") {
+        if (chaveID_Row && mapaPedIdx.has(chaveID_Row)) {
+          linhasParaDeletar.push(iniPed + mapaPedIdx.get(chaveID_Row));
+          mapaPedIdx.delete(chaveID_Row);
+        }
+        continue;
+      }
+
+      const emp = String(vals[C_OBRA.EMP - 1]).trim();
+      const uni = String(vals[C_OBRA.UNI - 1]).trim();
+      const cat = String(vals[C_OBRA.CAT - 1]).trim();
+      const sub = String(vals[C_OBRA.SUB - 1]).trim();
+      if (!emp || !uni || !cat || !sub) continue;
+
+      let chaveID = vals[C_OBRA.CHAVE - 1];
+      if (!chaveID || String(chaveID).startsWith("FO_ROW_")) {
+        chaveID = gerarUUID_();
+        dadosObra[i][C_OBRA.CHAVE - 1] = chaveID;
+        chavesGeradas.push([rowObra, chaveID]);
+      }
+
+      const chaveStr = String(chaveID).trim();
+      let rowParaAtualizar;
+
+      if (mapaPedIdx.has(chaveStr)) {
+        // Dados existentes lidos do batch
+        rowParaAtualizar = dadosPedAll[mapaPedIdx.get(chaveStr)].slice();
+      } else {
+        if (proximaLinhaLivre < 0) proximaLinhaLivre = obterPrimeiraLinhaLivrePedidos_(abaPedidos);
+        rowParaAtualizar = new Array(C_PED.CHAVE).fill("");
+      }
+
+      // Atualiza campos em memória
+      rowParaAtualizar[C_PED.EMP - 1] = emp;
+      rowParaAtualizar[C_PED.UNI - 1] = uni;
+      if (C_PED.OPR > 0) rowParaAtualizar[C_PED.OPR - 1] = vals[C_OBRA.OPR - 1];
+      if (C_PED.ADM > 0) rowParaAtualizar[C_PED.ADM - 1] = vals[C_OBRA.ADM - 1];
+      if (C_PED.TIPO > 0) rowParaAtualizar[C_PED.TIPO - 1] = vals[C_OBRA.TIPO - 1];
+      if (C_PED.CAT > 0) rowParaAtualizar[C_PED.CAT - 1] = cat;
+      if (C_PED.SUB > 0) rowParaAtualizar[C_PED.SUB - 1] = sub;
+      if (C_PED.DATA_SOLICITADO_OPR > 0) rowParaAtualizar[C_PED.DATA_SOLICITADO_OPR - 1] = vals[C_OBRA.DATA_SOLICITADO_OPR - 1] || null;
+      if (C_PED.DATA_AGENDADO_ADM > 0) rowParaAtualizar[C_PED.DATA_AGENDADO_ADM - 1] = vals[C_OBRA.DATA_AGENDADO_ADM - 1] || null;
+      rowParaAtualizar[C_PED.CHAVE - 1] = chaveID;
+
+      if (mapaPedIdx.has(chaveStr)) {
+        // Atualiza no array existente (será gravado em batch)
+        dadosPedAll[mapaPedIdx.get(chaveStr)] = rowParaAtualizar;
+      } else {
+        const linhaDest = proximaLinhaLivre++;
+        linhasParaEscreverNoPedido.push([linhaDest, rowParaAtualizar]);
+      }
+    }
+
+    // 3) Flush batch — chaves geradas na Obra
+    if (chavesGeradas.length > 0) {
+      for (const [row, chave] of chavesGeradas) {
+        sheetObra.getRange(row, C_OBRA.CHAVE).setValue(chave);
+      }
+    }
+
+    // 4) Flush batch — atualiza pedidos existentes (1 chamada)
+    if (lastPed >= iniPed && dadosPedAll.length > 0) {
+      abaPedidos.getRange(iniPed, 1, dadosPedAll.length, C_PED.CHAVE).setValues(dadosPedAll);
+    }
+
+    // 5) Flush — novas linhas de pedidos
+    if (linhasParaEscreverNoPedido.length > 0) {
+      for (const [linhaDest, dados] of linhasParaEscreverNoPedido) {
+        garantirLinhasAte_(abaPedidos, linhaDest);
+        abaPedidos.getRange(linhaDest, 1, 1, C_PED.CHAVE).setValues([dados]);
+      }
+    }
+
+    // 6) Deleta órfãos de baixo para cima
     if (linhasParaDeletar.length > 0) {
       linhasParaDeletar.sort((a, b) => b - a).forEach(lp => abaPedidos.deleteRow(lp));
     }
@@ -234,23 +270,44 @@ function sincronizarDataPrevista_(e) {
 
   const C_OBRA = resolveSheetColumns_(sheetObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
   const C_PED = resolveSheetColumns_(abaPedidos, CONFIG.HEADERS_COLS.PEDIDOS, CONFIG.COLUMNS.PEDIDOS);
+  if (C_PED.DATA_SOLICITADO_OPR <= 0) return;
 
-  // Lê todas as linhas e o mapa de pedidos uma vez
+  // Lê todas as linhas editadas da obra em batch
   const maxColObra = Math.max(C_OBRA.CHAVE, C_OBRA.DATA_SOLICITADO_OPR);
   const dadosObra = sheetObra.getRange(rowStart, 1, numRows, maxColObra).getValues();
-  const mapaPedidos = obterMapaPedidosPorChave_(abaPedidos);
 
+  // Mapa chave → novaData
+  const mapaNovasDatas = new Map();
   for (let i = 0; i < numRows; i++) {
-    const valsObra = dadosObra[i];
-    const chaveID = valsObra[C_OBRA.CHAVE - 1];
-    const dataNova = valsObra[C_OBRA.DATA_SOLICITADO_OPR - 1];
-
+    const chaveID = String(dadosObra[i][C_OBRA.CHAVE - 1] || "").trim();
     if (!chaveID) continue;
+    mapaNovasDatas.set(chaveID, dadosObra[i][C_OBRA.DATA_SOLICITADO_OPR - 1] || null);
+  }
+  if (mapaNovasDatas.size === 0) return;
 
-    const linhaPed = mapaPedidos.get(String(chaveID).trim());
-    if (linhaPed > 0 && C_PED.DATA_SOLICITADO_OPR > 0) {
-      abaPedidos.getRange(linhaPed, C_PED.DATA_SOLICITADO_OPR).setValue(dataNova || null);
+  // Lê toda a coluna CHAVE + DATA dos Pedidos em batch
+  const iniPed = obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS);
+  const lastPed = abaPedidos.getLastRow();
+  if (lastPed < iniPed) return;
+
+  const numRowsPed = lastPed - iniPed + 1;
+  const maxColPed = Math.max(C_PED.CHAVE, C_PED.DATA_SOLICITADO_OPR);
+  const dadosPed = abaPedidos.getRange(iniPed, 1, numRowsPed, maxColPed).getValues();
+
+  // Atualiza em memória
+  let houveAlteracao = false;
+  for (let i = 0; i < dadosPed.length; i++) {
+    const chavePed = String(dadosPed[i][C_PED.CHAVE - 1] || "").trim();
+    if (chavePed && mapaNovasDatas.has(chavePed)) {
+      dadosPed[i][C_PED.DATA_SOLICITADO_OPR - 1] = mapaNovasDatas.get(chavePed);
+      houveAlteracao = true;
     }
+  }
+
+  // Grava em batch (1 chamada)
+  if (houveAlteracao) {
+    const colDatas = dadosPed.map(r => [r[C_PED.DATA_SOLICITADO_OPR - 1]]);
+    abaPedidos.getRange(iniPed, C_PED.DATA_SOLICITADO_OPR, numRowsPed, 1).setValues(colDatas);
   }
 }
 
@@ -445,6 +502,7 @@ function sincronizarPedidosParaFaseObraCompleta_(exibirAlerta) {
  * Sincroniza dados das INFORMAÇÕES GERAIS para a FASE-PRELIMINAR.
  */
 function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) {
+  executarComDocumentLock_(function() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
   const pre = ss.getSheetByName(CONFIG.SHEETS.PRELIMINAR);
@@ -456,24 +514,20 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
 
   const C_INFO = resolveSheetColumns_(info, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
   const maxColInfo = Math.max(
-    C_INFO.EMP,
-    C_INFO.UNI,
-    C_INFO.DATA_LOTE,
-    C_INFO.DATA_PRAZO,
-    C_INFO.FASE_MACRO,
-    C_INFO.PRIORIDADE,
-    C_INFO.RESP_OPR,
-    C_INFO.RESP_ADM
+    C_INFO.EMP, C_INFO.UNI, C_INFO.DATA_LOTE, C_INFO.DATA_PRAZO,
+    C_INFO.FASE_MACRO, C_INFO.PRIORIDADE, C_INFO.RESP_OPR, C_INFO.RESP_ADM
   );
   const registrosInfo = info.getRange(linhaInicialInfo, 1, lastInfo - linhaInicialInfo + 1, maxColInfo).getValues();
 
   const C_PRE = resolveSheetColumns_(pre, CONFIG.HEADERS_COLS.PRELIMINAR, CONFIG.COLUMNS.PRELIMINAR);
+  const linhaInicialPre = obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR);
+  const linhaHeaderPre = linhaInicialPre - 1;
 
-  // Mapeamento de colunas na Preliminar (usando map dinâmico)
+  // Mapeamento de colunas
   const mapeamento = {
     colDataLote: C_PRE.DATA_LOTE,
     colDataPrazo: C_PRE.DATA_PRAZO,
-    colFaseMacro: obterColunaPorCabecalho_(pre, CONFIG.HEADERS.FASE_MACRO, obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR) - 1),
+    colFaseMacro: obterColunaPorCabecalho_(pre, CONFIG.HEADERS.FASE_MACRO, linhaHeaderPre),
     colPrioridade: C_PRE.PRIORIDADE,
     colRespOpr: C_PRE.RESP_OPR,
     colRespAdm: C_PRE.RESP_ADM
@@ -482,8 +536,7 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
   // Mapeamento de Checklist (Dinâmico por Cabeçalho)
   const mapeamentoChecklist = {};
   const lastColPre = pre.getLastColumn();
-  const linhaHeaderPre = obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR) - 1;
-  const cabecalhosPre = lastColPre > 0 
+  const cabecalhosPre = lastColPre > 0
     ? pre.getRange(linhaHeaderPre, 1, 1, lastColPre).getDisplayValues()[0]
     : [];
 
@@ -497,10 +550,9 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
     }
   }
 
-  const linhaInicialPre = obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR);
+  // Mapa de unidades existentes na Preliminar
   const lastPre = pre.getLastRow();
   const mapaPrePorChave = new Map();
-
   if (lastPre >= linhaInicialPre) {
     const dadosPre = pre.getRange(linhaInicialPre, 1, lastPre - linhaInicialPre + 1, 2).getDisplayValues();
     for (let i = 0; i < dadosPre.length; i++) {
@@ -510,8 +562,10 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
     }
   }
 
-  let criadas = 0;
-  const colunasNovas = new Set(); // Para aplicar defaults apenas em novas linhas
+  // ============ FASE 1: Identifica novas e existentes ============
+  const unidadesNovas = []; // [{emp, uni, infoRow}]
+  const atualizacoes = [];  // [{rowPre, infoRow, isNova}]
+  const chavesProcessadas = new Set(); // Evita duplicatas de EMP|UNI dentro da mesma execução
 
   for (let i = 0; i < registrosInfo.length; i++) {
     const row = registrosInfo[i];
@@ -522,54 +576,106 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
     const chave = `${emp.toUpperCase()}|${uni}`;
     if (chavesAlvo && chavesAlvo.size > 0 && !chavesAlvo.has(chave)) continue;
 
-    let rowPre = mapaPrePorChave.get(chave);
-    if (!rowPre) {
-      pre.insertRowsBefore(linhaInicialPre, 1);
-      
-      // Atualiza mapa de linhas existentes (desloca para baixo)
-      for (const [k, v] of mapaPrePorChave.entries()) {
-        mapaPrePorChave.set(k, v + 1);
-      }
+    // Proteção contra duplicatas: se já processamos essa chave, pula
+    if (chavesProcessadas.has(chave)) continue;
+    chavesProcessadas.add(chave);
 
-      // Copia formato da linha de baixo
-      const linhaMolde = pre.getRange(linhaInicialPre + 1, 1, 1, pre.getMaxColumns());
-      const alvo = pre.getRange(linhaInicialPre, 1, 1, pre.getMaxColumns());
-      linhaMolde.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
-      linhaMolde.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
+    const rowPre = mapaPrePorChave.get(chave);
+    if (rowPre) {
+      atualizacoes.push({ rowPre, infoRow: row, isNova: false });
+    } else {
+      unidadesNovas.push({ emp, uni, infoRow: row });
+    }
+  }
 
-      rowPre = linhaInicialPre;
-      mapaPrePorChave.set(chave, rowPre);
-      colunasNovas.add(rowPre);
-      criadas++;
+  // ============ FASE 2: Inserção em lote de novas linhas ============
+  if (unidadesNovas.length > 0) {
+    const qtd = unidadesNovas.length;
+    pre.insertRowsBefore(linhaInicialPre, qtd);
+
+    // Copia formato/validação da linha molde (1 vez para todas)
+    const linhaMolde = linhaInicialPre + qtd;
+    if (linhaMolde <= pre.getLastRow()) {
+      const maxCols = pre.getMaxColumns();
+      const origem = pre.getRange(linhaMolde, 1, 1, maxCols);
+      const alvo = pre.getRange(linhaInicialPre, 1, qtd, maxCols);
+      origem.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_FORMAT, false);
+      origem.copyTo(alvo, SpreadsheetApp.CopyPasteType.PASTE_DATA_VALIDATION, false);
     }
 
-    // Grava dados principais
-    pre.getRange(rowPre, 1, 1, 2).setValues([[emp, uni]]);
-    if (mapeamento.colDataLote > 0) pre.getRange(rowPre, mapeamento.colDataLote).setValue(row[C_INFO.DATA_LOTE - 1]);
-    if (mapeamento.colDataPrazo > 0) pre.getRange(rowPre, mapeamento.colDataPrazo).setValue(row[C_INFO.DATA_PRAZO - 1]);
-    if (mapeamento.colFaseMacro > 0) pre.getRange(rowPre, mapeamento.colFaseMacro).setValue(row[C_INFO.FASE_MACRO - 1]);
-    
-    // Removidos RESUMO_PENDENCIAS e RESUMO_OCORRENCIAS (usuário vai apagar colunas)
-    // Se ainda precisar gravar em algum lugar, precisaria de fallback; aqui simplesmente ignoramos
-    
-    if (mapeamento.colPrioridade > 0) pre.getRange(rowPre, mapeamento.colPrioridade).setValue(row[C_INFO.PRIORIDADE - 1]);
-    if (mapeamento.colRespOpr > 0) pre.getRange(rowPre, mapeamento.colRespOpr).setValue(row[C_INFO.RESP_OPR - 1]);
-    if (mapeamento.colRespAdm > 0) pre.getRange(rowPre, mapeamento.colRespAdm).setValue(row[C_INFO.RESP_ADM - 1]);
+    // Registra as novas linhas para atualização
+    for (let n = 0; n < qtd; n++) {
+      const rowPre = linhaInicialPre + n;
+      atualizacoes.push({ rowPre, infoRow: unidadesNovas[n].infoRow, isNova: true });
+    }
 
-    // Aplica Defaults (apenas se for nova linha)
-    if (colunasNovas.has(rowPre)) {
+    // Atualiza o mapa (linhas existentes deslocaram para baixo)
+    for (const [k, v] of mapaPrePorChave.entries()) {
+      mapaPrePorChave.set(k, v + qtd);
+    }
+    // Atualiza referências das existentes no array de atualizações
+    for (const a of atualizacoes) {
+      if (!a.isNova) a.rowPre += qtd;
+    }
+  }
+
+  // ============ FASE 3: Acumula escritas por coluna em memória ============
+  // Agrupa escritas por coluna para gravar em batch
+  const escritasPorColuna = new Map(); // colNum → Map(rowPre → valor)
+
+  function registrarEscrita(rowPre, col, valor) {
+    if (col <= 0) return;
+    if (!escritasPorColuna.has(col)) escritasPorColuna.set(col, new Map());
+    escritasPorColuna.get(col).set(rowPre, valor);
+  }
+
+  for (const a of atualizacoes) {
+    const { rowPre, infoRow, isNova } = a;
+
+    registrarEscrita(rowPre, 1, String(infoRow[C_INFO.EMP - 1] || "").trim());
+    registrarEscrita(rowPre, 2, String(infoRow[C_INFO.UNI - 1] || "").trim());
+    registrarEscrita(rowPre, mapeamento.colDataLote, infoRow[C_INFO.DATA_LOTE - 1]);
+    registrarEscrita(rowPre, mapeamento.colDataPrazo, infoRow[C_INFO.DATA_PRAZO - 1]);
+    registrarEscrita(rowPre, mapeamento.colFaseMacro, infoRow[C_INFO.FASE_MACRO - 1]);
+    registrarEscrita(rowPre, mapeamento.colPrioridade, infoRow[C_INFO.PRIORIDADE - 1]);
+    registrarEscrita(rowPre, mapeamento.colRespOpr, infoRow[C_INFO.RESP_OPR - 1]);
+    registrarEscrita(rowPre, mapeamento.colRespAdm, infoRow[C_INFO.RESP_ADM - 1]);
+
+    // Defaults do checklist (apenas novas)
+    if (isNova) {
       for (const col in mapeamentoChecklist) {
-        pre.getRange(rowPre, Number(col)).setValue(mapeamentoChecklist[col]);
+        registrarEscrita(rowPre, Number(col), mapeamentoChecklist[col]);
       }
     }
-    
-    // Limpa validação de unidade
-    processarIntervaloAparaB_(pre, pre.getRange(rowPre, 1, 1, 1));
+  }
+
+  // ============ FASE 4: Flush batch — 1 setValues por coluna ============
+  for (const [col, mapaLinhas] of escritasPorColuna.entries()) {
+    // Determina range contíguo mínimo
+    const linhas = Array.from(mapaLinhas.keys()).sort((a, b) => a - b);
+    const minRow = linhas[0];
+    const maxRow = linhas[linhas.length - 1];
+    const numRows = maxRow - minRow + 1;
+
+    // Lê valores atuais para preservar linhas não-alvo
+    const valoresAtuais = pre.getRange(minRow, col, numRows, 1).getValues();
+    for (const [row, valor] of mapaLinhas.entries()) {
+      valoresAtuais[row - minRow][0] = valor;
+    }
+    pre.getRange(minRow, col, numRows, 1).setValues(valoresAtuais);
+  }
+
+  // Limpa validações de unidade para aba Preliminar (não INFO_GERAIS)
+  if (atualizacoes.length > 0) {
+    const minRow = Math.min(...atualizacoes.map(a => a.rowPre));
+    const maxRow = Math.max(...atualizacoes.map(a => a.rowPre));
+    pre.getRange(minRow, 2, maxRow - minRow + 1, 1).clearDataValidations();
   }
 
   if (exibirAlerta) {
-    SpreadsheetApp.getUi().alert("Sincronização concluída. Novas unidades criadas: " + criadas);
+    SpreadsheetApp.getUi().alert("Sincronização concluída. Novas unidades criadas: " + unidadesNovas.length);
   }
+  }); // fim executarComDocumentLock_
 }
 /**
  * Encontra a primeira linha vazia na aba Pedidos, respeitando o marcador.
@@ -911,9 +1017,13 @@ function sincronizarOcorrenciasAbertasParaPreliminar_(chavesAlvo, exibirAlerta) 
   const lastPre = abaPre.getLastRow();
   if (lastPre < iniPre) return;
 
+  const numRowsPre = lastPre - iniPre + 1;
   const maxColPre = Math.max(C_PRE.EMP || 0, C_PRE.UNI || 0, C_PRE.RESUMO_OCORRENCIAS || 0, 1);
-  const rangePre = abaPre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre);
+  const rangePre = abaPre.getRange(iniPre, 1, numRowsPre, maxColPre);
   const dadosPre = rangePre.getValues();
+
+  // Pré-carrega valores atuais da coluna RESUMO em memória (evita getValue individual)
+  const colOcoIdx = C_PRE.RESUMO_OCORRENCIAS - 1;
   const saidaOco = [];
 
   for (let i = 0; i < dadosPre.length; i++) {
@@ -922,12 +1032,13 @@ function sincronizarOcorrenciasAbertasParaPreliminar_(chavesAlvo, exibirAlerta) 
     const chave = `${emp}|${uni}`;
     
     if (chavesAlvo && !chavesAlvo.has(chave)) {
-      saidaOco.push([abaPre.getRange(iniPre + i, C_PRE.RESUMO_OCORRENCIAS).getValue()]);
+      // Preserva valor atual lido em batch (antes: getValue individual)
+      saidaOco.push([colOcoIdx >= 0 ? dadosPre[i][colOcoIdx] : ""]);
       continue;
     }
 
     const qtd = mapaContagem.get(chave) || 0;
-    saidaOco.push([qtd > 0 ? qtd + " OCORRÊNCIA(S) ABERTAS" : "LIMPO"]);
+    saidaOco.push([qtd > 0 ? qtd + " OCORRÊNCIA(S) ABERTAS" : ""]);
   }
 
   if (C_PRE.RESUMO_OCORRENCIAS > 0) {
@@ -1078,10 +1189,11 @@ function sincronizarPedidosParaFaseObra_(e) {
     }
 
     if (houveAlteracao) {
-        // Grava apenas colunas J e K (Status e Fornecedor na Fase Obra)
-        const rangeJK = abaObra.getRange(iniObra, C_OBRA.STATUS, dadosObra.length, 2);
-        const novosValoresJK = dadosObra.map(r => [r[C_OBRA.STATUS - 1], r[C_OBRA.FORNECEDOR - 1]]);
-        rangeJK.setValues(novosValoresJK);
+        // Grava colunas independentes para evitar falha se não estiverem adjacentes
+        const colStatus = dadosObra.map(r => [r[C_OBRA.STATUS - 1]]);
+        const colFornecedor = dadosObra.map(r => [r[C_OBRA.FORNECEDOR - 1]]);
+        abaObra.getRange(iniObra, C_OBRA.STATUS, dadosObra.length, 1).setValues(colStatus);
+        abaObra.getRange(iniObra, C_OBRA.FORNECEDOR, dadosObra.length, 1).setValues(colFornecedor);
     }
   });
 }

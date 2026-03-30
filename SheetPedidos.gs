@@ -89,29 +89,47 @@ function sincronizarDataAgendadaAdmParaFaseObra_(e) {
   const C_PED = resolveSheetColumns_(sheet, CONFIG.HEADERS_COLS.PEDIDOS, CONFIG.COLUMNS.PEDIDOS);
   const C_OBRA = resolveSheetColumns_(abaObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
   
-  const numRows = range.getNumRows();
-  const rowStart = range.getRow();
   const iniPed = obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS);
-  const rowStartAdjusted = Math.max(rowStart, iniPed);
+  const rowStartAdjusted = Math.max(range.getRow(), iniPed);
   const numRowsAdjusted = range.getLastRow() - rowStartAdjusted + 1;
-  
   if (numRowsAdjusted <= 0) return;
 
-  // Lê todas as linhas e a CHAVE INTERNA de Pedidos
+  // Lê dados de Pedidos em batch
   const maxColPed = Math.max(C_PED.CHAVE, C_PED.DATA_AGENDADO_ADM);
   const dadosPedidos = sheet.getRange(rowStartAdjusted, 1, numRowsAdjusted, maxColPed).getValues();
 
+  // Mapa chave → novaData
+  const mapaNovasDatas = new Map();
   for (let i = 0; i < numRowsAdjusted; i++) {
-    const row = dadosPedidos[i];
-    const data = row[C_PED.DATA_AGENDADO_ADM - 1];
-    const chaveID = String(row[C_PED.CHAVE - 1] || "").trim();
-
+    const chaveID = String(dadosPedidos[i][C_PED.CHAVE - 1] || "").trim();
     if (!chaveID) continue;
+    mapaNovasDatas.set(chaveID, dadosPedidos[i][C_PED.DATA_AGENDADO_ADM - 1] || null);
+  }
+  if (mapaNovasDatas.size === 0) return;
 
-    // Localiza a linha na obra via CHAVE e atualiza
-    const linhaObra = localizarLinhaObraPorChave_(abaObra, chaveID);
-    if (linhaObra > 0) {
-      abaObra.getRange(linhaObra, C_OBRA.DATA_AGENDADO_ADM).setValue(data || null);
+  // Lê toda a FASE-OBRA em batch (1 chamada)
+  const iniObra = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA);
+  const lastObra = abaObra.getLastRow();
+  if (lastObra < iniObra) return;
+
+  const numRowsObra = lastObra - iniObra + 1;
+  const maxColObra = Math.max(C_OBRA.CHAVE, C_OBRA.DATA_AGENDADO_ADM);
+  const dadosObra = abaObra.getRange(iniObra, 1, numRowsObra, maxColObra).getValues();
+
+  // Atualiza em memória
+  let houveAlteracao = false;
+  for (let i = 0; i < dadosObra.length; i++) {
+    const chaveObra = String(dadosObra[i][C_OBRA.CHAVE - 1] || "").trim();
+    if (chaveObra && mapaNovasDatas.has(chaveObra)) {
+      dadosObra[i][C_OBRA.DATA_AGENDADO_ADM - 1] = mapaNovasDatas.get(chaveObra);
+      houveAlteracao = true;
     }
   }
+
+  // Grava em batch (1 chamada)
+  if (houveAlteracao) {
+    const colDatas = dadosObra.map(r => [r[C_OBRA.DATA_AGENDADO_ADM - 1]]);
+    abaObra.getRange(iniObra, C_OBRA.DATA_AGENDADO_ADM, numRowsObra, 1).setValues(colDatas);
+  }
 }
+

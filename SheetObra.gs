@@ -391,3 +391,32 @@ function configurarColunaSemanaMesFaseObra() {
     "Ela será atualizada automaticamente ao editar DATA INÍCIO PLANEJADO EXECUÇÃO."
   );
 }
+
+/**
+ * Sincroniza envio unitário para FASE-ENTREGA quando o checkbox é marcado na FASE-OBRA.
+ * Chamada pelo handler onEdit de FASE-OBRA.
+ */
+function sincronizarFaseObraParaFaseEntregaPorChave_(e, colChaveEntrega) {
+  if (!e || !e.range) return;
+  const sheetObra = e.range.getSheet();
+  const rowStart = e.range.getRow();
+  const numRows = e.range.getNumRows();
+  const C_OBRA = resolveSheetColumns_(sheetObra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+
+  const maxCol = Math.max(C_OBRA.EMP, C_OBRA.UNI, colChaveEntrega);
+  const dados = sheetObra.getRange(rowStart, 1, numRows, maxCol).getDisplayValues();
+
+  const candidatos = [];
+  for (let i = 0; i < numRows; i++) {
+    const valor = dados[i][colChaveEntrega - 1];
+    if (!CONFIG.STATUS.SIM_REGEX.test(String(valor).trim())) continue;
+
+    const emp = String(dados[i][C_OBRA.EMP - 1]).trim();
+    const uni = String(dados[i][C_OBRA.UNI - 1]).trim();
+    if (emp && uni) candidatos.push([emp, uni]);
+  }
+
+  if (candidatos.length > 0) {
+    inserirUnidadesNaFaseEntregaSemDuplicar_(candidatos);
+  }
+}
