@@ -33,6 +33,7 @@ function handlePedidosEdit(e) {
 
 /**
  * Busca o contato do fornecedor na aba Backup e carimba na coluna J.
+ * Funciona com ou sem cabeçalhos na aba Backup.
  */
 function buscarContatoFornecedor_(e) {
   const range = e.range;
@@ -46,32 +47,69 @@ function buscarContatoFornecedor_(e) {
   const lastBackup = abaBackup.getLastRow();
   if (lastBackup < 1) return;
 
-  const linhaHeaderBackup = 1;
-  const colFornecedorBackup = obterColunaPorCabecalho_(abaBackup, ["FORNECEDOR", "NOME FORNECEDOR", "NOME"], linhaHeaderBackup);
-  const colContatoBackup = obterColunaPorCabecalho_(abaBackup, ["CONTATO", "CONTATO FORNECEDOR", "TELEFONE", "WHATSAPP"], linhaHeaderBackup);
+  // 1) Tenta buscar cabeçalhos nas primeiras 3 linhas
+  const linhasBuscaHeader = [1, 2, 3];
+  let colFornecedorBackup = obterColunaPorCabecalhoEmLinhas_(
+    abaBackup,
+    ["FORNECEDOR", "NOME FORNECEDOR", "NOME"],
+    linhasBuscaHeader
+  );
+  let colContatoBackup = obterColunaPorCabecalhoEmLinhas_(
+    abaBackup,
+    ["CONTATO", "CONTATO FORNECEDOR", "TELEFONE", "WHATSAPP"],
+    linhasBuscaHeader
+  );
 
-  const colFornecedor = colFornecedorBackup > 0 ? colFornecedorBackup : 10;
-  const colContato = colContatoBackup > 0 ? colContatoBackup : 11;
-  const maxCol = Math.max(colFornecedor, colContato);
+  // 2) Se não encontrou cabeçalho, assume Backup sem cabeçalho e usa índices fixos
+  if (colFornecedorBackup <= 0 || colContatoBackup <= 0) {
+    console.log("Aba Backup sem cabeçalhos detectada. Usando índices fixos: FORNECEDOR=col10, CONTATO=col11");
+    colFornecedorBackup = 10;  // Coluna J (FORNECEDOR típico)
+    colContatoBackup = 11;     // Coluna K (CONTATO típico)
+  }
 
-  // Cache em memória dos fornecedores para performance
-  const dadosBackup = abaBackup.getRange(1, 1, lastBackup, maxCol).getValues();
+  const maxCol = Math.max(colFornecedorBackup, colContatoBackup);
+
+  // 3) Cache em memória dos fornecedores para performance
+  const dadosBackup = abaBackup.getRange(1, 1, lastBackup, maxCol).getDisplayValues();
   const mapaFornecedores = new Map();
-  dadosBackup.forEach(r => {
-    const nome = String(r[colFornecedor - 1] || "").trim().toUpperCase();
-    if (nome) mapaFornecedores.set(nome, r[colContato - 1]);
+  
+  dadosBackup.forEach((r, idx) => {
+    // Pula linhas de cabeçalho (se existirem) - detecta por padrão
+    const fornecedorValor = String(r[colFornecedorBackup - 1] || "").trim();
+    if (!fornecedorValor || idx < 3 && /FORNECEDOR|NOME/i.test(fornecedorValor)) {
+      return; // Pula linha de cabeçalho
+    }
+    
+    const nome = textoNormalizadoSemAcento_(fornecedorValor);
+    if (nome) {
+      const contato = String(r[colContatoBackup - 1] || "").trim();
+      // Evita guardar valores que parecem ser datas
+      if (!contato || /^\d{1,2}\/\d{1,2}\/\d{4}|^\d{4}-\d{2}-\d{2}/.test(contato)) {
+        return; // Ignora contatos que são datas
+      }
+      mapaFornecedores.set(nome, contato);
+    }
   });
 
+  if (mapaFornecedores.size === 0) {
+    console.warn("Nenhum fornecedor válido encontrado no Backup. Consulte a aba Backup e verifique dados.");
+    return;
+  }
+
+  // 4) Buscar contatos para fornecedores em PEDIDOS
   const numRows = range.getNumRows();
   const rowStart = range.getRow();
-  const fornecedores = sheet.getRange(rowStart, C_PED.FORNECEDOR, numRows, 1).getValues();
+  const fornecedores = sheet.getRange(rowStart, C_PED.FORNECEDOR, numRows, 1).getDisplayValues();
   const contatos = fornecedores.map(f => {
-    const nome = String(f[0] || "").trim().toUpperCase();
+    const nome = textoNormalizadoSemAcento_(f[0]);
     return [mapaFornecedores.get(nome) || ""];
   });
 
+  // 5) Gravar com formato texto (nunca deixa ser interpretado como data)
   if (C_PED.CONTATO) {
-    sheet.getRange(rowStart, C_PED.CONTATO, numRows, 1).setValues(contatos);
+    const rangeContato = sheet.getRange(rowStart, C_PED.CONTATO, numRows, 1);
+    rangeContato.setNumberFormat("@"); // Força formato texto
+    rangeContato.setValues(contatos);
   }
 }
 

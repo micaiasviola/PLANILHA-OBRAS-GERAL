@@ -1,0 +1,24 @@
+{
+  "name": "planilha-obras-ecqua-tests",
+  "version": "1.0.0",
+  "description": "Suite de testes automatizados para planilha de gestão de obras",
+  "scripts": {
+    "test": "node run-tests.js",
+    "test:local": "node tests.js",
+    "test:watch": "nodemon --exec node tests.js"
+  },
+  "keywords": [
+    "google-sheets",
+    "apps-script",
+    "testing",
+    "automation"
+  ],
+  "author": "ECQUA/HOUSI",
+  "license": "MIT",
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
