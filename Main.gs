@@ -8,11 +8,14 @@ function onOpen() {
 
   // Menu operacional (uso diário da equipe).
   ui.createMenu("⚙️ Automacao ECQUA")
+    .addItem("🌟 Abrir Painel de Gestão (Dashboard)", "abrirDashboardInterface")
+    .addSeparator()
     .addItem("➕ Inserir 1 linha no topo (INFO. GERAIS)", "inserirNovaLinhaTopoInformacoesGerais")
     .addItem("🧱 Gerar templates pendentes FASE-OBRA", "gerarTemplatesPendentesFaseObra")
     .addItem("🚀 Gerar/Atualizar PEDIDOS-GERAL (HOUSI)", "sincronizarTodosPedidosHousi")
     .addItem("🚚 Sincronizar envios para FASE-ENTREGA", "sincronizarTodosEnviosParaFaseEntrega")
     .addItem("⏰ Atualizar Indicador de Atrasos (INFO. GERAIS)", "atualizarIndicadorServicosAtrasados")
+    .addItem("📑 Ordenar Fase-Preliminar (Base INFO. GERAIS)", "ordenarPreliminarIgualInformacoesGerais")
     .addItem("🔄 Atualizar TODAS AS PENDÊNCIAS (Sinc. Global)", "sincronizacaoManualGlobal")
     .addToUi();
 
@@ -145,6 +148,9 @@ function executarSincronizacaoGlobalMadrugada_() {
     // 5) Consolidated Reports: Recalcula indicador de atrasos e Status Obra em INFO GERAIS
     try { recalcularServicosAtrasados_(); } catch(e) { console.error("Erro em recalcularServicosAtrasados: " + e.message); }
     try { sincronizarStatusObraGeral_(); } catch(e) { console.error("Erro em sincronizarStatusObraGeral: " + e.message); }
+
+    // 6) Alinhamento visual FASE-PRELIMINAR -> INFO GERAIS
+    try { ordenarPreliminarIgualInformacoesGerais(); } catch(e) { console.error("Erro em ordenarPreliminarIgualInformacoesGerais: " + e.message); }
 
     console.log("✅ Rotina Global de Madrugada concluída com sucesso!");
   }, 300000); // 5 minutos de lock para garantir execução completa

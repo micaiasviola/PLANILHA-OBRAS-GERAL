@@ -1840,3 +1840,92 @@ function sincronizarTodosIndicadoresCronogramaFaseObra() {
   sincronizarIndicadorCronogramaFaseObraPorEdicao_(fakeEvent);
   ss.toast("Indicador de cronograma (coluna E) recalculado para toda a FASE-OBRA!", "Sucesso", 5);
 }
+
+/**
+ * Ordena a aba FASE-PRELIMINAR de acordo com a ordem exata visual de INFORMAÇÕES GERAIS.
+ * A ordem física/numérica da base vira a nova ordem principal na preliminar, 
+ * evitando a quebra de DataValidations que ocorre com operações em lote usando setValues na tela toda.
+ */
+function ordenarPreliminarIgualInformacoesGerais() {
+  executarComDocumentLock_(function() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const abaInfo = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+    const abaPre = ss.getSheetByName(CONFIG.SHEETS.PRELIMINAR);
+    if (!abaInfo || !abaPre) return;
+
+    // Toast visível se estiver rodando pelo UI, caso madruagada não exibe (embora .toast ignore).
+    try { ss.toast("Lendo ordem atual...", "Ordenação Automática", 3); } catch(e){}
+
+    const C_INFO = resolveSheetColumns_(abaInfo, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+    const C_PRE = resolveSheetColumns_(abaPre, CONFIG.HEADERS_COLS.PRELIMINAR, CONFIG.COLUMNS.PRELIMINAR);
+
+    const iniInfo = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+    const lastInfo = abaInfo.getLastRow();
+    
+    // 1. Mapear a ordem atual em INFORMAÇÕES GERAIS para criar o ranking Base
+    const mapaOrdem = new Map();
+    if (lastInfo >= iniInfo) {
+      const maxColInfo = Math.max(C_INFO.EMP, C_INFO.UNI);
+      const dadosInfo = abaInfo.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();
+      for (let i = 0; i < dadosInfo.length; i++) {
+        const emp = String(dadosInfo[i][C_INFO.EMP - 1] || "").trim().toUpperCase();
+        const uni = String(dadosInfo[i][C_INFO.UNI - 1] || "").trim();
+        if (emp && uni) {
+          const chave = `${emp}|${uni}`;
+          if (!mapaOrdem.has(chave)) {
+            mapaOrdem.set(chave, i + 1); // 1º, 2º, 3º...
+          }
+        }
+      }
+    }
+
+    if (mapaOrdem.size === 0) return;
+
+    try { ss.toast("Aplicando ordenação...", "Ordenação Automática", 3); } catch(e){}
+
+    // 2. Aplicar etiqueta na Preliminar
+    const iniPre = obterLinhaInicialPorAba(CONFIG.SHEETS.PRELIMINAR);
+    const lastPre = abaPre.getLastRow();
+    if (lastPre < iniPre) return;
+
+    const maxColPre = Math.max(C_PRE.EMP, C_PRE.UNI);
+    const dadosPre = abaPre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre).getDisplayValues();
+    const etiquetas = [];
+
+    for (let i = 0; i < dadosPre.length; i++) {
+      const emp = String(dadosPre[i][C_PRE.EMP - 1] || "").trim().toUpperCase();
+      const uni = String(dadosPre[i][C_PRE.UNI - 1] || "").trim();
+      
+      const marcador = CONFIG.STATUS.MARCADOR_BASE.test(emp);
+      if (marcador) {
+         etiquetas.push([999999]); // Marcador vai pro fundo absoluto
+         continue;
+      }
+
+      if (emp && uni) {
+        const chave = `${emp}|${uni}`;
+        const ranking = mapaOrdem.has(chave) ? mapaOrdem.get(chave) : 99999;
+        etiquetas.push([ranking]);
+      } else {
+        etiquetas.push([99999]); // Itens não listados, brancos ou lixos caem pro fundo
+      }
+    }
+
+    // 3. Coluna temporária. Usar o LastColumn "verdadeiro" ou instanciar um distante O(1).
+    const maxColsPreRange = abaPre.getMaxColumns();
+    // Insere a coluna no limite horizontal para não sobrepor nada
+    abaPre.insertColumnAfter(maxColsPreRange);
+    const colTemp = parseInt(maxColsPreRange) + 1;
+    
+    abaPre.getRange(iniPre, colTemp, etiquetas.length, 1).setValues(etiquetas);
+
+    // 4. Sort nativo do Sheets. Arrastará as validações impecavelmente.
+    const rangeTotal = abaPre.getRange(iniPre, 1, etiquetas.length, colTemp);
+    rangeTotal.sort({ column: colTemp, ascending: true });
+
+    // 5. Limpeza de rastro
+    abaPre.deleteColumn(colTemp);
+
+    try { ss.toast("✅ FASE-PRELIMINAR perfeitamente alinhada!", "Sucesso", 5); } catch(e){}
+  }, 30000);
+}
