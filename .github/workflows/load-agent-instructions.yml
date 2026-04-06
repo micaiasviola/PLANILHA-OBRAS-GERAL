@@ -1,0 +1,47 @@
+name: Ensure Agent Instructions Loaded
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  load-agent:
+    name: Load and expose agent instructions
+    runs-on: ubuntu-latest
+    outputs:
+      agent_instructions: ${{ steps.load_agent.outputs.agent_instructions }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load agent instructions
+        id: load_agent
+        run: |
+          FILE=".github/agents/CUSTOM-AGENT.md"
+          if [ ! -f "$FILE" ]; then echo "Error: $FILE not found" >&2; exit 1; fi
+          # Export full file content as job output (preserves newlines)
+          echo "agent_instructions<<EOF" >> $GITHUB_OUTPUT
+          cat "$FILE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Preview (first 20 lines)
+        run: |
+          echo "=== AGENT INSTRUCTIONS (preview) ==="
+          head -n 20 .github/agents/CUSTOM-AGENT.md
+
+  example-usage:
+    name: Example: consume agent instructions
+    runs-on: ubuntu-latest
+    needs: load-agent
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Save instructions to file
+        run: |
+          echo "${{ needs.load-agent.outputs.agent_instructions }}" > repo-agent-instructions.md
+
+      - name: Show saved preview
+        run: head -n 20 repo-agent-instructions.md
