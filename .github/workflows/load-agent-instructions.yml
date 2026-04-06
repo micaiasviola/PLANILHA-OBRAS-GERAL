@@ -59,7 +59,15 @@ jobs:
             fi
 
             echo "Injecting instructions into: $f"
-            printf "\n\n%s\n" "$INJECT_CONTENT" >> "$f"
+
+            # Ensure file ends with a newline
+            last_char=$(tail -c 1 "$f" || true)
+            if [ -n "$last_char" ] && [ "$last_char" != $'\n' ]; then
+              printf '\n' >> "$f"
+            fi
+
+            # Append two blank lines and then the content
+            printf '\n\n%s\n' "$INJECT_CONTENT" >> "$f"
             git add "$f"
             CHANGED=1
           done
