@@ -1,0 +1,87 @@
+name: Inject Agent Instructions
+
+on:
+  push:
+    paths:
+      - '.github/agents/**'
+  pull_request:
+    paths:
+      - '.github/agents/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  inject:
+    name: Inject CUSTOM-AGENT.md into new agents
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Ensure CUSTOM-AGENT.md exists
+        run: |
+          if [ ! -f .github/agents/CUSTOM-AGENT.md ]; then
+            echo "Error: .github/agents/CUSTOM-AGENT.md not found" >&2
+            exit 1
+          fi
+
+      - name: Inject instructions where missing
+        env:
+          GIT_COMMIT_MSG: "chore: inject CUSTOM-AGENT.md into agent files [skip ci]\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>"
+        run: |
+          set -euo pipefail
+          INJECT_FILE='.github/agents/CUSTOM-AGENT.md'
+          INJECT_CONTENT=$(cat "$INJECT_FILE")
+
+          # Find agent markdown files tracked in git
+          AGENTS=$(git ls-files '.github/agents/*.md' || true)
+          if [ -z "$AGENTS" ]; then
+            echo "No agent files found to process"
+            exit 0
+          fi
+
+          CHANGED=0
+          for f in $AGENTS; do
+            # Skip the source file itself
+            if [ "$f" = "$INJECT_FILE" ]; then
+              continue
+            fi
+
+            # If file already contains a unique marker from the instructions, skip
+            if grep -Fq "Gerado automaticamente para orientar agentes personalizados" "$f"; then
+              echo "Already contains instructions: $f"
+              continue
+            fi
+
+            echo "Injecting instructions into: $f"
+
+            # Ensure file ends with a newline
+            last_char=$(tail -c 1 "$f" || true)
+            if [ -n "$last_char" ] && [ "$last_char" != $'\n' ]; then
+              printf '\n' >> "$f"
+            fi
+
+            # Append two blank lines and then the content
+            printf '\n\n%s\n' "$INJECT_CONTENT" >> "$f"
+            git add "$f"
+            CHANGED=1
+          done
+
+          if [ "$CHANGED" -eq 1 ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git commit -m "$GIT_COMMIT_MSG" || echo "No changes to commit"
+            git push
+          else
+            echo "No files required injection"
+          fi
+
+      - name: Show diff (for debug)
+        if: always()
+        run: |
+          git --no-pager --no-color diff --staged || true
