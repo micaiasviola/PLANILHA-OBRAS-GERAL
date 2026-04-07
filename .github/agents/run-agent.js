@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const repoRoot = path.resolve(__dirname, '..', '..', '..');
+const repoRoot = path.resolve(__dirname, '..', '..');
 const cwd = repoRoot;
 const args = process.argv.slice(2);
 const cmd = args[0] || 'help';
