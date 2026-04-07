@@ -283,3 +283,78 @@ function resolveSheetColumns_(aba, headerDefs, fallbacks) {
 function limparCacheResolucaoColunas_() {
   Object.keys(_colCache_).forEach(k => delete _colCache_[k]);
 }
+
+/**
+ * Obtém o índice da coluna técnica de chave (CHAVE/AY) para a aba informada.
+ * Tenta resolver pelos mappings CONFIG.HEADERS_COLS / CONFIG.COLUMNS e, se falhar,
+ * usa detecção por padrão UUID como fallback.
+ */
+function obterIndiceColunaChavePorAba_(aba) {
+  if (!aba) return -1;
+  const nome = aba.getName();
+  // Tenta encontrar a chave pelo mapeamento de sheets em CONFIG.SHEETS
+  for (const key in CONFIG.SHEETS) {
+    if (CONFIG.SHEETS[key] === nome) {
+      const headerDefs = CONFIG.HEADERS_COLS[key];
+      const fallbacks = CONFIG.COLUMNS[key];
+      if (headerDefs && fallbacks) {
+        try {
+          const cols = resolveSheetColumns_(aba, headerDefs, fallbacks);
+          if (cols && cols.CHAVE && cols.CHAVE > 0) return cols.CHAVE;
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+  }
+
+  // fallback: detecta pela assinatura UUID nas linhas de dados
+  const linhaInicial = Math.max(2, obterLinhaInicialPorAba(nome));
+  const detected = detectarColunaChaveUUID_(aba, linhaInicial);
+  return detected > 0 ? detected : -1;
+}
+
+/**
+ * Grava valores em um intervalo garantindo que a coluna técnica de CHAVE (AY) seja preservada.
+ * Se o intervalo escrito incluir a coluna CHAVE, os valores atuais dessa coluna serão mantidos.
+ * Uso seguro: substitui gravações em lote que poderiam sobrescrever a coluna técnica.
+ */
+function setValuesPreservandoColunaChave_(aba, startRow, startCol, values) {
+  if (!aba || !Array.isArray(values) || values.length === 0) return;
+  const numRows = values.length;
+  const numCols = values[0].length || 0;
+  if (numRows <= 0 || numCols <= 0) return;
+
+  const chaveCol = obterIndiceColunaChavePorAba_(aba);
+  if (chaveCol < 0) {
+    // sem coluna chave detectada — grava normalmente
+    aba.getRange(startRow, startCol, numRows, numCols).setValues(values);
+    return;
+  }
+
+  // Se a coluna chave não está dentro do intervalo a ser gravado, grava normalmente
+  const colFim = startCol + numCols - 1;
+  if (chaveCol < startCol || chaveCol > colFim) {
+    aba.getRange(startRow, startCol, numRows, numCols).setValues(values);
+    return;
+  }
+
+  // Precisamos preservar a coluna chave: ler valores existentes e mesclar
+  const existing = aba.getRange(startRow, startCol, numRows, numCols).getValues();
+  const idx = chaveCol - startCol;
+  const merged = values.map((row, r) => {
+    const newRow = row.slice();
+    // Se a nova linha não tem posição para a chave, garante espaço
+    if (newRow.length <= idx) {
+      for (let k = newRow.length; k <= idx; k++) newRow[k] = "";
+    }
+    // Preserva valor existente da coluna chave quando novo valor é vazio/null/undefined
+    const candidate = newRow[idx];
+    if (candidate === undefined || candidate === null || String(candidate).trim() === "") {
+      newRow[idx] = existing[r][idx];
+    }
+    return newRow;
+  });
+
+  aba.getRange(startRow, startCol, numRows, numCols).setValues(merged);
+}
