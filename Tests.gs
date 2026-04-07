@@ -328,8 +328,10 @@ function limparLinhasAdicionadasEmTestes_(ss, linhasAdicionadas) {
 function limparAbaTest_(abaTest) {
   const lastRow = abaTest.getLastRow();
   const lastCol = abaTest.getLastColumn();
+  const TEST_START_ROW = 1;
+  const TEST_START_COL = 1;
   if (lastRow > 0 && lastCol > 0) {
-    abaTest.getRange(1, 1, lastRow, lastCol).clearContent();
+    abaTest.getRange(TEST_START_ROW, TEST_START_COL, lastRow, lastCol).clearContent();
   }
 }
 
@@ -349,11 +351,13 @@ function gerarRelatorioTestes_(resultados, abaTest) {
     ]);
   }
 
-  const range = abaTest.getRange(1, 1, dados.length, 4);
+  const TEST_START_ROW = 1;
+  const TEST_START_COL = 1;
+  const range = abaTest.getRange(TEST_START_ROW, TEST_START_COL, dados.length, 4);
   range.setValues(dados);
 
   // Formatação
-  abaTest.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#4CAF50").setFontColor("white");
+  abaTest.getRange(TEST_START_ROW, TEST_START_COL, 1, 4).setFontWeight("bold").setBackground("#4CAF50").setFontColor("white");
   
   // Color by status
   for (let i = 1; i < dados.length; i++) {
@@ -364,7 +368,7 @@ function gerarRelatorioTestes_(resultados, abaTest) {
     if (status === "ERROR") bgColor = "#FFCDD2"; // Vermelho
     if (status === "SKIP") bgColor = "#E0E0E0"; // Cinza
     
-    abaTest.getRange(i + 1, 1, 1, 4).setBackground(bgColor);
+    abaTest.getRange(TEST_START_ROW + i, TEST_START_COL, 1, 4).setBackground(bgColor);
   }
 
   abaTest.autoResizeColumns(1, 4);

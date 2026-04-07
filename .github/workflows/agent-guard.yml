@@ -1,0 +1,33 @@
+name: Agent Guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  agent-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
+      - name: Run tests (agent)
+        run: npm run agent -- test
+      - name: Find fixed column usages (agent)
+        run: npm run agent -- find-fixed-columns
+      - name: Check AY/UUID usages (agent)
+        run: npm run agent -- check-ay
