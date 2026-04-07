@@ -19,7 +19,12 @@ jobs:
         with:
           node-version: '18'
       - name: Install dependencies
-        run: npm ci
+        run: |
+          if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then
+            npm ci
+          else
+            npm install
+          fi
       - name: Run tests (agent)
         run: npm run agent -- test
       - name: Find fixed column usages (agent)
