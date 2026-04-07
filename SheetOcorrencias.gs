@@ -79,7 +79,11 @@ function processarSubcategoriasOcorrencias_(abaOco, intervalo) {
   if (numRows <= 0) return;
 
   // Carrega categorias/subcategorias da aba CADASTROS
-  const dadosCad = abaCad.getRange(6, 2, abaCad.getLastRow() - 5, 2).getValues();
+  const CAD_FIRST_ROW = 6;
+  const CAD_FIRST_COL = 2;
+  const CAD_NUM_COLS = 2;
+  const CAD_NUM_ROWS = Math.max(0, abaCad.getLastRow() - (CAD_FIRST_ROW - 1));
+  const dadosCad = CAD_NUM_ROWS > 0 ? abaCad.getRange(CAD_FIRST_ROW, CAD_FIRST_COL, CAD_NUM_ROWS, CAD_NUM_COLS).getValues() : [];
 
   for (let i = 0; i < numRows; i++) {
     const row = rowStart + i;
