@@ -76,7 +76,12 @@ jobs:
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git commit -m "$GIT_COMMIT_MSG" || echo "No changes to commit"
-            git push
+            # Push changes back to the source branch for PR events (GITHUB_HEAD_REF is set on pull_request)
+            if [ -n "${GITHUB_HEAD_REF:-}" ]; then
+              git push origin HEAD:"$GITHUB_HEAD_REF"
+            else
+              git push
+            fi
           else
             echo "No files required injection"
           fi
@@ -84,4 +89,4 @@ jobs:
       - name: Show diff (for debug)
         if: always()
         run: |
-          git --no-pager --no-color diff --staged || true
+          git --no-pager diff --staged || true
