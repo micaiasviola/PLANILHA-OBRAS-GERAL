@@ -114,6 +114,7 @@ const CONFIG = {
 
     // ===================== FASE-OBRA =====================
     OBRA: {
+      OFFSET:               0,
       EMP:                  ["EMPREENDIMENTO"],
       UNI:                  ["UNID", "UNIDADE", "UNID-TR"],
       OPR:                  ["RESP OPR"],
@@ -193,9 +194,13 @@ const CONFIG = {
       STATUS_REVISTORIA_2: ["STATUS REVISTORIA 2", "STATUS REV 2"],
       ENVIAR_OBRA:        ["FASE-OBRA", "ENVIAR FASE-OBRA", "ENVIAR PARA OBRA"],
       // Colunas fixas de checklist / fases (número de posição)
+      DATA_RETIRADA_CHAVES: 23,
       STATUS_FASE01:    41,
       CHECKLIST_INI:    44,
       CHECKLIST_FIM:    74,
+      APONT_Y: 30,
+      APONT_AC: 35,
+      APONT_AG: 40,
       CHAVE:            ["CHAVE INTERNA"]
     },
 
@@ -203,6 +208,7 @@ const CONFIG = {
     ENTREGA: {
       EMP:                ["EMPREENDIMENTO"],
       UNI:                ["UNID", "UNIDADE"],
+      RESP_PRELIMINAR:    ["VISTORIA PRELIMINAR RESP OPR", "VISTORIA PRELIMINAR RESP"],
       RESP_OPR_PRE:       ["VISTORIA PRELIMINAR RESP OPR", "VISTORIA PRELIMINAR RESP"],
       RESP_ADM_PRE:       ["VISTORIA PRELIMINAR RESP ADM"],
       APONT_PRELIMINAR:   ["APONTAMENTO VISTORIA PRELIMINAR?"],
