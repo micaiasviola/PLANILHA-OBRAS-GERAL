@@ -70,7 +70,9 @@ function buscarContatoFornecedor_(e) {
   const maxCol = Math.max(colFornecedorBackup, colContatoBackup);
 
   // 3) Cache em memória dos fornecedores para performance
-  const dadosBackup = abaBackup.getRange(1, 1, lastBackup, maxCol).getDisplayValues();
+  const BACKUP_FIRST_ROW = 1;
+  const BACKUP_FIRST_COL = 1;
+  const dadosBackup = abaBackup.getRange(BACKUP_FIRST_ROW, BACKUP_FIRST_COL, lastBackup, maxCol).getDisplayValues();
   const mapaFornecedores = new Map();
   
   dadosBackup.forEach((r, idx) => {

@@ -393,8 +393,10 @@ function processarIntervaloAparaB_(aba, intervalo) {
 
   // Carrega backup uma vez (todas as unidades cadastradas)
   const lastRowBackup = obterUltimaLinhaDados_(abaBackup, 1);
+  const BACKUP_FIRST_ROW = 1;
+  const BACKUP_FIRST_COL = 1;
   const dadosBackup = lastRowBackup > 0 
-    ? abaBackup.getRange(1, 1, lastRowBackup, 2).getValues() 
+    ? abaBackup.getRange(BACKUP_FIRST_ROW, BACKUP_FIRST_COL, lastRowBackup, 2).getValues() 
     : [];
   
   // Otimização: Carrega todos os empreendimentos do intervalo de uma vez

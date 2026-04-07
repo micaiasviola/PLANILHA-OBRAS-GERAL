@@ -84,6 +84,9 @@ const mockGAS = {
   }
 };
 
+const TEST_START_ROW = 1;
+const TEST_START_COL = 1;
+
 // ============= TESTES =============
 
 class TestSuite {
@@ -221,7 +224,7 @@ const suite4 = new TestSuite("Suite 4: Operações Mock do Sheets");
 
 suite4.test("Lê dados de FASE-OBRA", () => {
   const sheet = mockGAS.sheets["FASE-OBRA"];
-  const dados = sheet.getRange(1, 1, 3, 11).getValues();
+  const dados = sheet.getRange(TEST_START_ROW, TEST_START_COL, 3, 11).getValues();
   
   suite4.assertTrue(dados.length === 3, "3 linhas lidas");
   suite4.assertEqual(dados[0][0], "EMPREENDIMENTO", "Cabeçalho correto");
@@ -230,7 +233,7 @@ suite4.test("Lê dados de FASE-OBRA", () => {
 
 suite4.test("Lê dados de Backup", () => {
   const sheet = mockGAS.sheets["Backup"];
-  const dados = sheet.getRange(1, 1, 4, 2).getValues();
+  const dados = sheet.getRange(TEST_START_ROW, TEST_START_COL, 4, 2).getValues();
   
   suite4.assertTrue(dados.length === 4, "4 linhas lidas");
   suite4.assertEqual(dados[1][1], "11999999999", "Contato do primeiro fornecedor");
