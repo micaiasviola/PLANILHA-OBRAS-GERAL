@@ -6,7 +6,8 @@
     "test": "node run-tests.js",
     "test:local": "node tests.js",
     "test:watch": "nodemon --exec node tests.js",
-    "agent": "node .github/agents/run-agent.js"
+    "agent": "node .github/agents/run-agent.js",
+    "agent-log": "node scripts/append-agent-log.js"
   },
   "keywords": [
     "google-sheets",
