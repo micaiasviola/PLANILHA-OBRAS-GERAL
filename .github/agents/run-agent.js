@@ -142,3 +142,30 @@ switch (cmd) {
   } catch (_) {}
 })();
 // --- end append ---
+
+// --- Agent success logging (explicit) ---
+// Run agent-log after successful runs when appropriate. Avoid recursion and duplicate logs.
+(function runAgentSuccessLogger() {
+  try {
+    if (process.env && process.env.AGENT_LOGGER) return; // avoid loops
+    // Check last commit message; if it's an agent-log commit, skip to avoid churn
+    const res = spawnSync('git', ['log', '-1', '--pretty=%B'], { cwd, encoding: 'utf8', shell: true });
+    const lastMsg = (res && res.stdout) ? res.stdout.toString().trim() : '';
+    if (/^agent-log:/.test(lastMsg)) return;
+    // Run agent-log to record a successful run. Set AGENT_LOGGER=1 to avoid recursion.
+    console.log('-> Running agent-log to record successful run...');
+    try {
+      spawnSync('npm', ['run', 'agent-log', '--', 'COMMIT_PUSH', 'auto'], {
+        cwd,
+        env: Object.assign({}, process.env, { AGENT_NAME: 'CustomAgent', AGENT_LOGGER: '1' }),
+        stdio: 'inherit',
+        shell: true
+      });
+    } catch (e) {
+      try { console.error('agent-log (success) failed:', e && e.message ? e.message : e); } catch (_) {}
+    }
+  } catch (e) {
+    /* swallow errors */
+  }
+})();
+// --- end success append ---
