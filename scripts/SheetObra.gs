@@ -58,7 +58,11 @@ function handleObraEdit(e) {
 /**
  * Atualiza dropdowns de subcategoria baseados na categoria.
  */
-function processarSubcategoriasObra_(abaObra, intervalo) {
+function processarSubcategoriasObra_(abaObra, intervalo, options) {
+  options = options || {};
+  const revalidate = !!options.revalidate;
+  const defaultToFirst = !!options.defaultToFirst;
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const abaCad = ss.getSheetByName(CONFIG.SHEETS.CADASTROS);
   if (!abaCad) return;
@@ -100,6 +104,22 @@ function processarSubcategoriasObra_(abaObra, intervalo) {
       .build();
 
     celulaSub.setDataValidation(regra);
+
+    // Opcional: revalida o valor atual da célula e limpa (ou substitui) se inválido
+    if (revalidate) {
+      try {
+        const cur = String(celulaSub.getValue() || "").trim();
+        if (!cur || subcategorias.indexOf(cur) === -1) {
+          if (defaultToFirst) {
+            celulaSub.setValue(subcategorias[0]);
+          } else {
+            celulaSub.clearContent();
+          }
+        }
+      } catch (e) {
+        console.error('processarSubcategoriasObra_ revalidate row ' + row + ': ' + e);
+      }
+    }
   }
 }
 

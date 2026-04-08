@@ -111,3 +111,61 @@ switch (cmd) {
   default:
     help();
 }
+
+// --- Agent logging integration (append) ---
+// When this process exits with a non-zero code, trigger `npm run agent-log`
+// once, but avoid recursion by setting AGENT_LOGGER=1 in the child env.
+(function setupAgentLogger() {
+  if (!process || !process.on) return;
+  try {
+    process.on('exit', (code) => {
+      try {
+        // Only run the agent-log for non-zero exit codes (diagnostic runs)
+        if (!code || code === 0) return;
+        if (process.env && process.env.AGENT_LOGGER) return; // avoid loops
+        console.log('-> Exit code', code, '- running npm run agent-log for diagnostics...');
+        try {
+          // Synchronous spawn is necessary inside exit handlers
+          spawnSync('npm', ['run', 'agent-log'], {
+            cwd,
+            stdio: 'inherit',
+            shell: true,
+            env: Object.assign({}, process.env, { AGENT_LOGGER: '1' })
+          });
+        } catch (e) {
+          try { console.error('agent-log failed:', e && e.message ? e.message : e); } catch (_) {}
+        }
+      } catch (_) {
+        /* swallow */
+      }
+    });
+  } catch (_) {}
+})();
+// --- end append ---
+
+// --- Agent success logging (explicit) ---
+// Run agent-log after successful runs when appropriate. Avoid recursion and duplicate logs.
+(function runAgentSuccessLogger() {
+  try {
+    if (process.env && process.env.AGENT_LOGGER) return; // avoid loops
+    // Check last commit message; if it's an agent-log commit, skip to avoid churn
+    const res = spawnSync('git', ['log', '-1', '--pretty=%B'], { cwd, encoding: 'utf8', shell: true });
+    const lastMsg = (res && res.stdout) ? res.stdout.toString().trim() : '';
+    if (/^agent-log:/.test(lastMsg)) return;
+    // Run agent-log to record a successful run. Set AGENT_LOGGER=1 to avoid recursion.
+    console.log('-> Running agent-log to record successful run...');
+    try {
+      spawnSync('npm', ['run', 'agent-log', '--', 'COMMIT_PUSH', 'auto'], {
+        cwd,
+        env: Object.assign({}, process.env, { AGENT_NAME: 'CustomAgent', AGENT_LOGGER: '1' }),
+        stdio: 'inherit',
+        shell: true
+      });
+    } catch (e) {
+      try { console.error('agent-log (success) failed:', e && e.message ? e.message : e); } catch (_) {}
+    }
+  } catch (e) {
+    /* swallow errors */
+  }
+})();
+// --- end success append ---
