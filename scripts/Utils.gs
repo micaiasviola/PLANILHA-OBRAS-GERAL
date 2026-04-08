@@ -362,8 +362,9 @@ function setValuesPreservandoColunaChave_(aba, startRow, startCol, values) {
 
 /**
  * Reordena as linhas da FASE-OBRA para seguir a ordem definida em INFORMAÇÕES GERAIS.
- * Mantém todas as colunas existentes (valores) e preserva linhas que não têm correspondência,
- * colocando-as ao final na ordem original.
+ * Preserva validações e formatações por linha ao usar sort nativo do Sheets.
+ * Linhas sem correspondência em INFORMAÇÕES GERAIS vão para o final,
+ * mantendo a ordem original entre elas.
  */
 function atualizarOrdemFaseObraPorInformacoesGerais_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -382,53 +383,98 @@ function atualizarOrdemFaseObraPorInformacoesGerais_() {
 
     const maxColInfo = Math.max(C_INFO.EMP, C_INFO.UNI);
     const dadosInfo = info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();
-    const ordemChaves = [];
+    const mapaOrdem = new Map();
     for (let i = 0; i < dadosInfo.length; i++) {
       const emp = String(dadosInfo[i][C_INFO.EMP - 1] || "").trim().toUpperCase();
       const uni = String(dadosInfo[i][C_INFO.UNI - 1] || "").trim();
-      if (emp && uni) ordemChaves.push(emp + "|" + uni);
+      if (!emp || !uni) continue;
+      const chave = emp + "|" + uni;
+      if (!mapaOrdem.has(chave)) mapaOrdem.set(chave, i + 1);
     }
+    if (mapaOrdem.size === 0) return;
 
     const lastColObra = obra.getLastColumn();
-    const dadosObra = obra.getRange(iniObra, 1, lastObra - iniObra + 1, lastColObra).getValues();
+    const total = lastObra - iniObra + 1;
+    const maxColChave = Math.max(C_OBRA.EMP, C_OBRA.UNI);
+    const dadosChaveObra = obra.getRange(iniObra, 1, total, maxColChave).getDisplayValues();
 
-    const mapa = {};
-    const chavesOrigem = [];
-    for (let i = 0; i < dadosObra.length; i++) {
-      const emp = String(dadosObra[i][C_OBRA.EMP - 1] || "").trim().toUpperCase();
-      const uni = String(dadosObra[i][C_OBRA.UNI - 1] || "").trim();
-      const chave = (emp && uni) ? emp + "|" + uni : "__ROW__" + i;
-      chavesOrigem.push(chave);
-      if (!mapa[chave]) mapa[chave] = [];
-      mapa[chave].push(dadosObra[i]);
-    }
+    // Criar mapa de agrupamento por unidade e preservar ordem interna
+    const rank = [];
+    const seqWithin = [];
+    const seqGlobal = [];
+    const unmatchedBase = 900000;
+    const unmatchedMap = new Map();
+    let unmatchedCounter = 0;
+    const countersPerUnit = {};
 
-    const ordered = [];
-    const visitados = {};
-    // Primeiro: adicionar linhas encontradas na ordem das Informações Gerais
-    for (let k = 0; k < ordemChaves.length; k++) {
-      const chave = ordemChaves[k];
-      if (mapa[chave] && mapa[chave].length) {
-        while (mapa[chave].length) ordered.push(mapa[chave].shift());
-        visitados[chave] = true;
+    for (let i = 0; i < dadosChaveObra.length; i++) {
+      const emp = String(dadosChaveObra[i][C_OBRA.EMP - 1] || "").trim().toUpperCase();
+      const uni = String(dadosChaveObra[i][C_OBRA.UNI - 1] || "").trim();
+      const chave = (emp && uni) ? (emp + "|" + uni) : "__ROW__" + i;
+
+      let groupRank;
+      if (mapaOrdem.has(chave)) {
+        groupRank = mapaOrdem.get(chave);
+      } else {
+        if (!unmatchedMap.has(chave)) {
+          unmatchedCounter++;
+          unmatchedMap.set(chave, unmatchedCounter);
+        }
+        groupRank = unmatchedBase + unmatchedMap.get(chave);
       }
+
+      rank.push([groupRank]);
+
+      countersPerUnit[chave] = (countersPerUnit[chave] || 0) + 1;
+      seqWithin.push([countersPerUnit[chave]]);
+      seqGlobal.push([i + 1]);
     }
 
-    // Depois: adicionar linhas restantes na ordem original
-    for (let i = 0; i < chavesOrigem.length; i++) {
-      const chave = chavesOrigem[i];
-      if (visitados[chave]) continue;
-      if (mapa[chave] && mapa[chave].length) {
-        while (mapa[chave].length) ordered.push(mapa[chave].shift());
-        visitados[chave] = true;
+    // Inserir 3 colunas auxiliares: rank (grupo), seqWithin (ordem interna), seqGlobal (tie-break)
+    const maxCols = obra.getMaxColumns();
+    obra.insertColumnsAfter(maxCols, 3);
+    const colRank = maxCols + 1;
+    const colSeqWithin = maxCols + 2;
+    const colSeqGlobal = maxCols + 3;
+
+    obra.getRange(iniObra, colRank, total, 1).setValues(rank);
+    obra.getRange(iniObra, colSeqWithin, total, 1).setValues(seqWithin);
+    obra.getRange(iniObra, colSeqGlobal, total, 1).setValues(seqGlobal);
+
+    const rangeSort = obra.getRange(iniObra, 1, total, colSeqGlobal);
+    rangeSort.sort([
+      { column: colRank, ascending: true },
+      { column: colSeqWithin, ascending: true },
+      { column: colSeqGlobal, ascending: true }
+    ]);
+
+    // Remover colunas auxiliares (direita -> esquerda)
+    obra.deleteColumn(colSeqGlobal);
+    obra.deleteColumn(colSeqWithin);
+    obra.deleteColumn(colRank);
+
+    // Garantir que a linha acima dos dados (espacador) esteja vazia
+    const spacerRow = iniObra - 1;
+    if (spacerRow >= 1) {
+      const spacerRange = obra.getRange(spacerRow, 1, 1, obra.getLastColumn());
+      const spacerVals = spacerRange.getValues()[0];
+      let anyNonEmpty = false;
+      for (let j = 0; j < spacerVals.length; j++) {
+        if (String(spacerVals[j]).trim() !== '') { anyNonEmpty = true; break; }
       }
-    }
+      if (anyNonEmpty) spacerRange.clearContent();
 
-    // Garantir o mesmo número de linhas escritas
-    const total = dadosObra.length;
-    while (ordered.length < total) ordered.push(new Array(lastColObra).fill(""));
-
-    obra.getRange(iniObra, 1, total, lastColObra).setValues(ordered);
+      // Revalida subcategorias de serviço nas linhas ordenadas para evitar células "Inválido"
+      try {
+        const C_OBRA2 = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+        const colStart = Math.min(C_OBRA2.CAT, C_OBRA2.SUB);
+        const colSpan = Math.abs(C_OBRA2.SUB - C_OBRA2.CAT) + 1;
+        const intervaloReval = obra.getRange(iniObra, colStart, total, colSpan);
+        processarSubcategoriasObra_(obra, intervaloReval, { revalidate: true });
+      } catch (err) {
+        console.error('Erro ao revalidar subcategorias após ordenação: ' + err);
+      }
+      }
   });
 }
 
