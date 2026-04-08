@@ -90,3 +90,34 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 ---
 **Fim de Documento.**
 (Conserve este documento na raiz virtual do projeto para manter coerência semântica perante o desenvolvimento de novas features.)
+## Atualizações do script (FASE-OBRA reorder & CI)
+
+- Implementada função atualizarOrdemFaseObraPorInformacoesGerais_() em scripts/Utils.gs para reordenar a aba 'FASE-OBRA' seguindo a ordem de 'INFORMAÇÕES GERAIS'. Linhas sem correspondência são movidas ao final.
+- Adicionada executarAtualizarFaseObraDiaria() e criarTriggerDiariaAtualizarFaseObra_() para criação de trigger diário (03:30) — nota: trigger precisa ser ativada no editor do Apps Script.
+- Rotina executarSincronizacaoGlobalMadrugada_ (scripts/Main.gs) foi atualizada para chamar a reordenação durante a sincronização noturna das 01:00.
+- Preservação da coluna técnica 'CHAVE' (coluna AY) ao regravar dados via setValuesPreservandoColunaChave_.
+- Ajustes em scripts/Config.gs: novos HEADERS_COLS e fallbacks para suportar resolução dinâmica de colunas sem depender de índices numéricos.
+- CI: Agent Guard workflow (.github/workflows/agent-guard.yml) agora fornece check run 'agent-checks'. Proteção de branch deve exigir esse contexto para desobstruir merges.
+
+Detalhes e passo a passo para ativar o trigger diário
+- Função que cria o gatilho: criarTriggerDiariaAtualizarFaseObra_()
+- Horário recomendado: 03:30 (padrão do projeto). A função agendará uma execução diária que chama executarAtualizarFaseObraDiaria().
+- Observação importante: Triggers são específicas do projeto Apps Script e só podem ser criadas pela conta do Google que tem permissão no projeto. Para ativar manualmente:
+  1. Abra a planilha no Google Sheets → Extensões → Apps Script.
+  2. No editor do Apps Script, no painel esquerdo, selecione a função criarTriggerDiariaAtualizarFaseObra_ e clique em Executar (Run).
+  3. Conceda as autorizações solicitadas (OAuth) se for a primeira vez.
+  4. No editor, abra o painel "Triggers" (ícone de relógio) e confirme que existe um gatilho do tipo "Time-driven" configurado para rodar diariamente às 03:30.
+
+Automatização (opcional)
+- Para criar triggers programaticamente (CI), usar a Apps Script API com credenciais de serviço ou usar clasp + uma conta que tenha permissões. Esse fluxo requer deploy e permissões administrativas e não é executado automaticamente ao fazer merge.
+
+Ações necessárias após merge
+- Com a branch mesclada, execute criarTriggerDiariaAtualizarFaseObra_() no editor do Apps Script com a conta de deploy para ativar o gatilho.
+- Testar em uma cópia de staging: fazer backup, executar executarAtualizarFaseObraDiaria() manualmente e verificar se a ordem da aba FASE-OBRA corresponde à ordem de INFORMAÇÕES GERAIS.
+- Conferir logs e validar que UUIDs (coluna AY) foram preservadas.
+
+Notas sobre CI/Proteção de branch
+- O check run do Agent Guard é chamado "agent-checks". Garanta que a regra de proteção do branch principal (main) exige esse contexto para liberar merges.
+- Se houver mismatch entre o nome esperado pela proteção e o check run real, ajustar na UI do GitHub: Settings → Branches → Edit rule → Required status checks.
+
+
