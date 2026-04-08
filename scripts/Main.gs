@@ -17,6 +17,7 @@ function onOpen() {
     .addItem("⏰ Atualizar Indicador de Atrasos (INFO. GERAIS)", "atualizarIndicadorServicosAtrasados")
     .addItem("📑 Ordenar Fase-Preliminar (Base INFO. GERAIS)", "ordenarPreliminarIgualInformacoesGerais")
     .addItem("🔄 Atualizar TODAS AS PENDÊNCIAS (Sinc. Global)", "sincronizacaoManualGlobal")
+    .addItem("⏯️ Reordenar FASE-OBRA (Manual)", "executarAtualizarFaseObraDiaria")
     .addToUi();
 
   // Menu técnico (manutenção/admin).
@@ -38,6 +39,8 @@ function onOpen() {
     .addSeparator()
     .addItem("📆 Recalcular Semanas Cronograma (OBRA)", "sincronizarTodaAbaObraSemanasCronograma")
     .addItem("📅 Recalcular Semanas do Mês (OBRA)", "sincronizarTodaAbaObraSemanaMes")
+    .addSeparator()
+    .addItem("⏰ Criar acionador diário FASE-OBRA (03:30)", "criarTriggerDiariaAtualizarFaseObra_")
     .addToUi();
 }
 
