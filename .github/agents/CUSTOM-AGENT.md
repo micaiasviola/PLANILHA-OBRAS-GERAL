@@ -53,3 +53,47 @@ Contato / documentação
 
 ---
 Gerado automaticamente para orientar agentes personalizados sobre como iterar neste repositório.
+
+## Logging de alterações (AGENT-LOGS.md)
+
+Para permitir rastreabilidade e monitoramento das ações do agente, escreva UMA LINHA em `AGENT-LOGS.md` logo após um commit/push bem-sucedido. Use o script já presente no repositório (`npm run agent-log`) para garantir formato consistente.
+
+Comando (Bash):
+
+AGENT_NAME=CustomAgent npm run agent-log -- "COMMIT_PUSH" "descrição curta" [PR_NUMBER]
+
+Comando (PowerShell):
+
+$env:AGENT_NAME = "CustomAgent"; npm run agent-log -- "COMMIT_PUSH" "descrição curta" [PR_NUMBER]
+
+Recomendações de integração no agente
+
+- Execute o comando de logging apenas APÓS o `git push` ter sido concluído com sucesso (assim o SHA gravado será o correto).
+- Evite que o logger crie um loop detectando se o último commit já é um `agent-log` (o script `append-agent-log.js` e o hook em `run-agent.js` já tratam isso em parte).
+
+Snippet (Node.js) — colar no fim do fluxo do agente (após commit/push):
+
+```js
+const { spawnSync } = require('child_process');
+const res = spawnSync('git', ['log', '-1', '--pretty=%B'], { encoding: 'utf8', cwd: process.cwd(), shell: true });
+const lastMsg = (res && res.stdout) ? res.stdout.toString().trim() : '';
+if (!/^agent-log:/.test(lastMsg)) {
+  // Ajuste a descrição e PR_NUMBER conforme disponível
+  const pr = process.env.PR_NUMBER ? process.env.PR_NUMBER : '';
+  try {
+    spawnSync(`cross-env AGENT_NAME=CustomAgent npm run agent-log -- "COMMIT_PUSH" "descreva a ação" ${pr}`, { stdio: 'inherit', shell: true });
+  } catch (e) {
+    console.error('Falha ao executar agent-log:', e.message || e);
+  }
+}
+```
+
+Notas de segurança
+
+- Não inclua segredos na descrição do log.
+- Certifique-se de que o agente tem credenciais Git configuradas para permitir push.
+- Se o push falhar por conflito, o agente deve re-tentar o push antes de invocar o logger.
+
+> Observação: O run-agent.js também tenta registrar execuções automaticamente (backup). Ainda assim, recomendamos que o agente invoque explicitamente o `npm run agent-log` para garantir precisão e mensagem contextual.
+
+---
