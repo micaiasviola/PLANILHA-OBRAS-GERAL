@@ -358,3 +358,97 @@ function setValuesPreservandoColunaChave_(aba, startRow, startCol, values) {
 
   aba.getRange(startRow, startCol, numRows, numCols).setValues(merged);
 }
+
+
+/**
+ * Reordena as linhas da FASE-OBRA para seguir a ordem definida em INFORMAÇÕES GERAIS.
+ * Mantém todas as colunas existentes (valores) e preserva linhas que não têm correspondência,
+ * colocando-as ao final na ordem original.
+ */
+function atualizarOrdemFaseObraPorInformacoesGerais_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
+  const obra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+  if (!info || !obra) return;
+
+  executarComDocumentLock_(function() {
+    const C_INFO = resolveSheetColumns_(info, CONFIG.HEADERS_COLS.INFO_GERAIS, CONFIG.COLUMNS.INFO_GERAIS);
+    const C_OBRA = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+    const iniInfo = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS);
+    const iniObra = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA);
+    const lastInfo = obterUltimaLinhaDados_(info, C_INFO.EMP);
+    const lastObra = obterUltimaLinhaDados_(obra, C_OBRA.EMP);
+    if (lastInfo < iniInfo || lastObra < iniObra) return;
+
+    const maxColInfo = Math.max(C_INFO.EMP, C_INFO.UNI);
+    const dadosInfo = info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();
+    const ordemChaves = [];
+    for (let i = 0; i < dadosInfo.length; i++) {
+      const emp = String(dadosInfo[i][C_INFO.EMP - 1] || "").trim().toUpperCase();
+      const uni = String(dadosInfo[i][C_INFO.UNI - 1] || "").trim();
+      if (emp && uni) ordemChaves.push(emp + "|" + uni);
+    }
+
+    const lastColObra = obra.getLastColumn();
+    const dadosObra = obra.getRange(iniObra, 1, lastObra - iniObra + 1, lastColObra).getValues();
+
+    const mapa = {};
+    const chavesOrigem = [];
+    for (let i = 0; i < dadosObra.length; i++) {
+      const emp = String(dadosObra[i][C_OBRA.EMP - 1] || "").trim().toUpperCase();
+      const uni = String(dadosObra[i][C_OBRA.UNI - 1] || "").trim();
+      const chave = (emp && uni) ? emp + "|" + uni : "__ROW__" + i;
+      chavesOrigem.push(chave);
+      if (!mapa[chave]) mapa[chave] = [];
+      mapa[chave].push(dadosObra[i]);
+    }
+
+    const ordered = [];
+    const visitados = {};
+    // Primeiro: adicionar linhas encontradas na ordem das Informações Gerais
+    for (let k = 0; k < ordemChaves.length; k++) {
+      const chave = ordemChaves[k];
+      if (mapa[chave] && mapa[chave].length) {
+        while (mapa[chave].length) ordered.push(mapa[chave].shift());
+        visitados[chave] = true;
+      }
+    }
+
+    // Depois: adicionar linhas restantes na ordem original
+    for (let i = 0; i < chavesOrigem.length; i++) {
+      const chave = chavesOrigem[i];
+      if (visitados[chave]) continue;
+      if (mapa[chave] && mapa[chave].length) {
+        while (mapa[chave].length) ordered.push(mapa[chave].shift());
+        visitados[chave] = true;
+      }
+    }
+
+    // Garantir o mesmo número de linhas escritas
+    const total = dadosObra.length;
+    while (ordered.length < total) ordered.push(new Array(lastColObra).fill(""));
+
+    obra.getRange(iniObra, 1, total, lastColObra).setValues(ordered);
+  });
+}
+
+/** Wrapper executável por trigger (registro diário) */
+function executarAtualizarFaseObraDiaria() {
+  try {
+    atualizarOrdemFaseObraPorInformacoesGerais_();
+  } catch (err) {
+    console.error('Erro ao atualizar ordem FASE-OBRA: ' + err);
+  }
+}
+
+/** Cria um trigger diário (3:30) para atualizar a ordem da FASE-OBRA */
+function criarTriggerDiariaAtualizarFaseObra_() {
+  const fn = 'executarAtualizarFaseObraDiaria';
+  const triggers = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < triggers.length; i++) {
+    const t = triggers[i];
+    if (t.getHandlerFunction() === fn) ScriptApp.deleteTrigger(t);
+  }
+  ScriptApp.newTrigger(fn).timeBased().everyDays(1).atHour(3).nearMinute(30).create();
+  Logger.log('Trigger criada para ' + fn);
+}
