@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
 
     steps:
       - name: Checkout
@@ -91,11 +92,18 @@ jobs:
           git commit -m "chore(agent-logs): append automated log entry [skip ci]" || true
           git push origin HEAD:"${BRANCH}"
 
-          if [ -n "${GITHUB_TOKEN:-}" ]; then
+          if [ -n "${GITHUB_TOKEN:-}" ] || [ -n "${ACTIONS_PAT:-}" ]; then
+            PR_TOKEN="${ACTIONS_PAT:-${GITHUB_TOKEN}}"
             PAYLOAD="{\"title\":\"Append AGENT log entry\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry created by agent-log-auto workflow.\"}"
-            curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${REPO}/pulls -d "$PAYLOAD"
+            HTTP_CODE=$(curl -s -o /tmp/pr_resp -w "%{http_code}" -X POST -H "Authorization: token ${PR_TOKEN}" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${REPO}/pulls -d "$PAYLOAD")
+            if [ "$HTTP_CODE" -ne 201 ]; then
+              echo "PR creation failed with status $HTTP_CODE"
+              cat /tmp/pr_resp || true
+              exit 1
+            fi
           else
-            echo "GITHUB_TOKEN not available; PR not created. Branch pushed: https://github.com/${REPO}/pull/new/${BRANCH}"
+            echo "No token available to create PR; Branch pushed: https://github.com/${REPO}/pull/new/${BRANCH}"
+            exit 1
           fi
 
       - name: Notify on failure (note)
