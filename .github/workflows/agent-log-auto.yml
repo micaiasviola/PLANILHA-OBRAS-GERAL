@@ -1,0 +1,99 @@
+name: Auto Append AGENT-LOG
+
+on:
+  pull_request:
+    types: [closed]
+  push:
+    branches: [main]
+
+jobs:
+  append-log:
+    if: "(github.event_name == 'pull_request' && github.event.pull_request.merged == true) || (github.event_name == 'push' && github.ref == 'refs/heads/main')"
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare log entry
+        env:
+          GITHUB_EVENT_PATH: ${{ github.event_path }}
+        run: |
+          set -eu
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            PR_NUMBER=$(jq -r .pull_request.number "$GITHUB_EVENT_PATH")
+            PR_TITLE=$(jq -r .pull_request.title "$GITHUB_EVENT_PATH")
+            MERGED_BY=$(jq -r .pull_request.merged_by.login "$GITHUB_EVENT_PATH")
+            MERGE_SHA=$(jq -r .pull_request.merge_commit_sha "$GITHUB_EVENT_PATH")
+            ENTRY="$TS | PR-MERGER(${MERGED_BY}) | PR-MERGED | ${PR_TITLE} | commit: ${MERGE_SHA} | pr: #${PR_NUMBER}"
+          else
+            COMMIT_SHA="$GITHUB_SHA"
+            COMMIT_MSG=$(git log -1 --pretty=%s ${COMMIT_SHA} 2>/dev/null || echo "")
+            PUSHER="$GITHUB_ACTOR"
+            ENTRY="$TS | PUSH_TO_MAIN | ${COMMIT_MSG} | commit: ${COMMIT_SHA} | pusher: ${PUSHER}"
+          fi
+          echo "$ENTRY" > /tmp/agent_entry.txt
+
+      - name: Write AGENT-LOGS.md directly to main (prefer ACTIONS_PAT)
+        env:
+          ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          ENTRY=$(cat /tmp/agent_entry.txt)
+
+          if [ -n "${ACTIONS_PAT:-}" ]; then
+            echo "ACTIONS_PAT present — attempting direct commit to main"
+            git config user.name "agent-log-bot"
+            git config user.email "agent-log-bot@users.noreply.github.com"
+            git remote set-url origin "https://x-access-token:${ACTIONS_PAT}@github.com/${REPO}.git"
+            git fetch origin main
+            git checkout main
+            git pull origin main
+
+            if [ ! -f AGENT-LOGS.md ]; then
+              echo "# AGENT-LOGS" > AGENT-LOGS.md
+              echo "(Autogerado pelo workflow agent-log-auto)" >> AGENT-LOGS.md
+              echo "" >> AGENT-LOGS.md
+            fi
+
+            echo "$ENTRY" >> AGENT-LOGS.md
+            git add AGENT-LOGS.md
+            if git diff --staged --quiet; then
+              echo "No changes to commit."
+              exit 0
+            fi
+            git commit -m "chore(agent-logs): append automated log entry [skip ci]"
+            if git push origin main; then
+              echo "Appended AGENT-LOGS.md directly on main"
+              exit 0
+            else
+              echo "Direct push to main failed; will fallback to creating branch+PR"
+            fi
+          else
+            echo "ACTIONS_PAT not available — will create fallback branch+PR using GITHUB_TOKEN"
+          fi
+
+          # Fallback: create unique branch and open PR using GITHUB_TOKEN
+          BRANCH="agent-log/entry-${GITHUB_RUN_ID}-$(date -u +%Y%m%d%H%M%S)"
+          git checkout -b "${BRANCH}"
+          if [ ! -f AGENT-LOGS.md ]; then
+            echo "# AGENT-LOGS" > AGENT-LOGS.md
+            echo "(Autogerado pelo workflow agent-log-auto)" >> AGENT-LOGS.md
+            echo "" >> AGENT-LOGS.md
+          fi
+          echo "$ENTRY" >> AGENT-LOGS.md
+          git add AGENT-LOGS.md
+          git commit -m "chore(agent-logs): append automated log entry [skip ci]" || true
+          git push origin HEAD:"${BRANCH}"
+
+          PAYLOAD="{\"title\":\"Append AGENT log entry\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry created by agent-log-auto workflow.\"}"
+          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${REPO}/pulls -d "$PAYLOAD"
+
+      - name: Notify on failure (note)
+        if: failure()
+        run: |
+          echo "A ação de append do AGENT-LOG falhou. Verifique os logs da action."
