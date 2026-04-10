@@ -37,3 +37,5 @@ Instruções para o outro agente (append seguro):
 Obs: este arquivo foi criado automaticamente para suportar monitoramento entre agentes. Mantê-lo curto e legível.
 - 2026-04-08T19:10:08.091Z | Copilot-Local | REVALIDATE_POST_SORT | Revalidação de subcategorias após ordenação | commit: 0577002 
 - 2026-04-08T20:12:07.017Z | Copilot-Local | REMOVE_LIMPO_OCORRENCIAS | Remove 'LIMPO' em ocorrências automatizadas | commit: c9cee9d 
+- 2026-04-10T14:25:28Z | agent-log-retrofit | PR-MERGED | feat(sheet): usar RESP_ADM resolvido por cabeçalho | commit: 9fdd39b | pr: #13
+- 2026-04-10T14:57:49Z | agent-log-retrofit | PR-MERGED | feat(sync): resolver largura fakeEvent (SyncLogic) | commit: 3bb73bc | pr: #14
