@@ -267,6 +267,19 @@ function sincronizarPagamentosDaFaseObra() {
   if (lastRow < ini) { SpreadsheetApp.getUi().alert('FASE-OBRA não possui dados.'); return; }
 
   const headerRow = obra.getRange(1,1,1,lastCol).getValues()[0].map(h=>String(h).trim());
+  const norm = (v) => String(v || '')
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^A-Z0-9]/g, '');
+  const normalizedHeaders = headerRow.map(norm);
+  const findIdxByNames = (names) => {
+    const wanted = names.map(norm);
+    for (let i = 0; i < normalizedHeaders.length; i++) {
+      if (wanted.indexOf(normalizedHeaders[i]) !== -1) return i;
+    }
+    return -1;
+  };
   let chaveIdx = headerRow.indexOf('CHAVE');
   if (chaveIdx === -1) chaveIdx = headerRow.indexOf('CHAVE_SERVICO');
 
@@ -282,11 +295,26 @@ function sincronizarPagamentosDaFaseObra() {
 
   if (chaveIdx === -1) throw new Error('Coluna CHAVE não encontrada em FASE-OBRA.');
 
-  const totalCandidates = ['VALOR_TOTAL_SERVICO','VALOR_TOTAL','VALOR','VALOR_SERVICO','TOTAL_SERVICO'];
-  let totalIdx = -1; for (let c of totalCandidates) { const i = headerRow.indexOf(c); if (i !== -1) { totalIdx = i; break; } }
+  const totalCandidates = [
+    'VALOR TOTAL SERVIÇO',
+    'VALOR TOTAL SERVICO',
+    'VALOR_TOTAL_SERVICO',
+    'VALOR TOTAL',
+    'TOTAL SERVICO',
+    'TOTAL_SERVICO'
+  ];
+  let totalIdx = findIdxByNames(totalCandidates);
+  // Fallback conhecido do layout: coluna AA (27) inicia bloco financeiro
+  if (totalIdx === -1 && lastCol >= 27) totalIdx = 26;
 
   // if totalIdx not found in headers, try common fixed positions or leave as -1
   const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
+  const C = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+  const empIdx = C.EMP ? C.EMP - 1 : findIdxByNames(['EMPREENDIMENTO']);
+  const uniIdx = C.UNI ? C.UNI - 1 : findIdxByNames(['UNID', 'UNIDADE']);
+  const catIdx = C.CAT ? C.CAT - 1 : findIdxByNames(['CATEGORIA DE SERVIÇO', 'CATEGORIA DE SERVICO', 'CATEGORIA']);
+  const subIdx = C.SUB ? C.SUB - 1 : findIdxByNames(['SUB-CATEGORIA DE SERVIÇO', 'SUB-CATEGORIA DE SERVICO', 'SUBCATEGORIA']);
+  const servIdx = findIdxByNames(['SERVIÇO', 'SERVICO', 'DESCRIÇÃO', 'DESCRICAO']);
 
   const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h).trim());
   const paymentsData = paySh.getDataRange().getValues();
@@ -314,12 +342,11 @@ function sincronizarPagamentosDaFaseObra() {
       const h = payHeaders[i];
       if (h === 'PAYMENT_UUID' || h === 'PAYMENT_ID' || h === 'ID') out[i] = 'PAY-' + Date.now() + '-' + Math.floor(Math.random()*1000);
       else if (h === 'CHAVE' || h === 'CHAVE_SERVICO') out[i] = chave;
-      else if (h === 'EMPREENDIMENTO') {
-        const idx = headerRow.indexOf('EMPREENDIMENTO'); if (idx !== -1) out[i] = row[idx];
-      } else if (h === 'UNIDADE' || h === 'UNID') { const idx = headerRow.indexOf('UNIDADE'); if (idx !== -1) out[i] = row[idx]; }
-      else if (h === 'CATEGORIA') { const idx = headerRow.indexOf('CATEGORIA'); if (idx !== -1) out[i] = row[idx]; }
-      else if (h === 'SUBCATEGORIA') { const idx = headerRow.indexOf('SUBCATEGORIA'); if (idx !== -1) out[i] = row[idx]; }
-      else if (h === 'SERVICO') { const idx = headerRow.indexOf('SERVICO'); if (idx !== -1) out[i] = row[idx]; }
+      else if (h === 'EMPREENDIMENTO') out[i] = empIdx >= 0 ? row[empIdx] : '';
+      else if (h === 'UNIDADE' || h === 'UNID') out[i] = uniIdx >= 0 ? row[uniIdx] : '';
+      else if (h === 'CATEGORIA') out[i] = catIdx >= 0 ? row[catIdx] : '';
+      else if (h === 'SUBCATEGORIA') out[i] = subIdx >= 0 ? row[subIdx] : '';
+      else if (h === 'SERVICO') out[i] = servIdx >= 0 ? row[servIdx] : '';
       else if (h === 'PRESTADOR' || h === 'FORNECEDOR') out[i] = '';
       else if (h === 'PARCELA_NUM' || h === 'PARCELA') out[i] = 1;
       else if (h === 'VALOR' || h === 'VALOR_PARCELA' || h === 'VALOR_PARCELA') out[i] = total;
