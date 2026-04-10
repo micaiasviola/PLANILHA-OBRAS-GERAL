@@ -39,3 +39,7 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-08T20:12:07.017Z | Copilot-Local | REMOVE_LIMPO_OCORRENCIAS | Remove 'LIMPO' em ocorrências automatizadas | commit: c9cee9d 
 - 2026-04-10T14:25:28Z | agent-log-retrofit | PR-MERGED | feat(sheet): usar RESP_ADM resolvido por cabeçalho | commit: 9fdd39b | pr: #13
 - 2026-04-10T14:57:49Z | agent-log-retrofit | PR-MERGED | feat(sync): resolver largura fakeEvent (SyncLogic) | commit: 3bb73bc | pr: #14
+- 2026-04-10T15:37:32Z | agent-log-retrofit | PR-MERGED | refactor(sync): usar larguras calculadas via maxCols (SyncLogic) | commit: 55c78a0 | pr: #15
+- 2026-04-10T15:39:29Z | agent-log-retrofit | PR-MERGED | chore(agent-logs): add workflow and retrofit logs for PRs #13,#14 | commit: 0bcd112 | pr: #16
+- 2026-04-10T15:46:43Z | agent-log-retrofit | PR-MERGED | fix(workflow): corrigir sintaxe agent-log-on-merge.yml | commit: eba857b | pr: #17
+- 2026-04-10T15:52:05Z | agent-log-retrofit | PR-MERGED | refactor(obra): usar maxCols para evitar indices fixos | commit: 148229e | pr: #18
