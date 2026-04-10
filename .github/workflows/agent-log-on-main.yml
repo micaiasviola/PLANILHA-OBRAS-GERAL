@@ -81,10 +81,7 @@ jobs:
           git commit -m "chore(agent-logs): append automated log entry [skip ci]" || true
           git push origin HEAD:"${BRANCH}"
 
-          PAYLOAD=$(cat <<EOF
-{"title":"Append AGENT log entry","head":"${BRANCH}","base":"main","body":"Automated agent log entry created by agent-log-on-merge workflow."}
-EOF
-)
+          PAYLOAD="{\"title\":\"Append AGENT log entry\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry created by agent-log-on-merge workflow.\"}"
 
           curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/${REPO}/pulls \
