@@ -235,12 +235,25 @@ function sincronizarPagamentosDaFaseObra() {
   if (lastRow < ini) { SpreadsheetApp.getUi().alert('FASE-OBRA não possui dados.'); return; }
 
   const headerRow = obra.getRange(1,1,1,lastCol).getValues()[0].map(h=>String(h).trim());
-  const chaveIdx = headerRow.indexOf('CHAVE') !== -1 ? headerRow.indexOf('CHAVE') : headerRow.indexOf('CHAVE_SERVICO');
+  let chaveIdx = headerRow.indexOf('CHAVE');
+  if (chaveIdx === -1) chaveIdx = headerRow.indexOf('CHAVE_SERVICO');
+
+  // If still not found, fallback to fixed column mapping CONFIG.COLUMNS.OBRA.CHAVE (1-based index, e.g., 51 for AY)
+  if (chaveIdx === -1) {
+    if (CONFIG && CONFIG.COLUMNS && CONFIG.COLUMNS.OBRA && CONFIG.COLUMNS.OBRA.CHAVE) {
+      const fixed = Number(CONFIG.COLUMNS.OBRA.CHAVE);
+      if (!isNaN(fixed) && fixed > 0) {
+        chaveIdx = fixed - 1; // zero-based
+      }
+    }
+  }
+
   if (chaveIdx === -1) throw new Error('Coluna CHAVE não encontrada em FASE-OBRA.');
 
   const totalCandidates = ['VALOR_TOTAL_SERVICO','VALOR_TOTAL','VALOR','VALOR_SERVICO','TOTAL_SERVICO'];
   let totalIdx = -1; for (let c of totalCandidates) { const i = headerRow.indexOf(c); if (i !== -1) { totalIdx = i; break; } }
 
+  // if totalIdx not found in headers, try common fixed positions or leave as -1
   const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
 
   const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h).trim());
