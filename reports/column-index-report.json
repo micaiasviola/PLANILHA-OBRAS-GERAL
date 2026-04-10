@@ -1,0 +1,887 @@
+{
+  "generated": "2026-04-08T21:06:01.639Z",
+  "items": [
+    {
+      "file": "scripts\\Dashboard.gs",
+      "line": 44,
+      "code": "const dadosInfo = abaInfo.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Dashboard.gs",
+      "line": 83,
+      "code": "const dadosPed = abaPedidos.getRange(iniPed, 1, lastPed - iniPed + 1, maxColPed).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Dashboard.gs",
+      "line": 112,
+      "code": "const dadosOco = abaOcor.getRange(iniOco, 1, lastOco - iniOco + 1, maxColOco).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Main.gs",
+      "line": 93,
+      "code": "processarIntervaloAparaB_(aba, aba.getRange(linhaCorte, 1, aba.getLastRow() - linhaCorte + 1, 1));",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Main.gs",
+      "line": 204,
+      "code": "const dados = obra.getRange(ini, 1, numRows, maxCol).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetEntrega.gs",
+      "line": 34,
+      "code": "const dados = entrega.getRange(primeiraLinha, 1, numLinhas, maxCol).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 67,
+      "code": "const dadosEmpUni = info.getRange(primeiraLinha, 1, numLinhas, maxColInfo).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 114,
+      "code": "const origem = info.getRange(linhaMolde, 1, 1, maxCols);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 115,
+      "code": "const alvo = info.getRange(linhaIni, 1, qtd, maxCols);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 136,
+      "code": "info.getRange(linhaIni, 1, qtd, colFimDados).clearContent();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 141,
+      "code": "processarIntervaloAparaB_(info, info.getRange(linhaIni, 1, qtd, 1));",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 179,
+      "code": "const dadosObra = abaObra.getRange(iniObra, 1, lastObra - iniObra + 1, maxColObra)",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 208,
+      "code": "const dadosInfo = abaInfo.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo)",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetInfoGerais.gs",
+      "line": 232,
+      "code": "console.log(\"Indicador de atrasos atualizado: \" + novosResumos.filter(r => r[0]).length + \" unidade(s) com atraso.\");",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 93,
+      "code": ".filter(r => String(r[0]).trim() === cat && String(r[1]).trim() !== \"\")",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 94,
+      "code": ".map(r => String(r[1]).trim());",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 114,
+      "code": "celulaSub.setValue(subcategorias[0]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 173,
+      "code": "const valsObra = obra.getRange(obraIni, 1, obraLast - obraIni + 1, Math.max(C_OBRA.EMP, C_OBRA.UNI)).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 223,
+      "code": "const dadosPre = pre.getRange(preIni, 1, preLast - preIni + 1, lastColPre).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 254,
+      "code": "linhaNova[C_OBRA.CAT - 1] = t[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 255,
+      "code": "linhaNova[C_OBRA.SUB - 1] = t[1];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 256,
+      "code": "linhaNova[C_OBRA.ATRELADO - 1] = t[2];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_2"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 274,
+      "code": "const rangeInsert = obra.getRange(iniLivre, 1, arrayLoteCompleto.length, numMaxColsLinha);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 300,
+      "code": "const vals = obra.getRange(linha, 1, 1, Math.max(C.CHAVE, C.ATRELADO)).getValues()[0];",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 300,
+      "code": "const vals = obra.getRange(linha, 1, 1, Math.max(C.CHAVE, C.ATRELADO)).getValues()[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 319,
+      "code": "const dadosPed = abaPedidos.getRange(linhaPed, C_PED.STATUS, 1, C_PED.FORNECEDOR - C_PED.STATUS + 1).getValues()[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 320,
+      "code": "obra.getRange(linha, C.STATUS).setValue(dadosPed[0]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 321,
+      "code": "obra.getRange(linha, C.FORNECEDOR).setValue(dadosPed[1]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetObra.gs",
+      "line": 431,
+      "code": "const dados = sheetObra.getRange(rowStart, 1, numRows, maxCol).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetOcorrencias.gs",
+      "line": 49,
+      "code": "const dados = ocorrencias.getRange(primeiraLinha, 1, numLinhas, maxCol).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetOcorrencias.gs",
+      "line": 99,
+      "code": ".filter(r => String(r[0]).trim() === cat && String(r[1]).trim() !== \"\")",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetOcorrencias.gs",
+      "line": 100,
+      "code": ".map(r => String(r[1]).trim());",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPedidos.gs",
+      "line": 106,
+      "code": "const nome = textoNormalizadoSemAcento_(f[0]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetPedidos.gs",
+      "line": 139,
+      "code": "const dadosPedidos = sheet.getRange(rowStartAdjusted, 1, numRowsAdjusted, maxColPed).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPedidos.gs",
+      "line": 157,
+      "code": "const dadosObra = abaObra.getRange(iniObra, 1, numRowsObra, maxColObra).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPreliminar.gs",
+      "line": 42,
+      "code": "const dados = pre.getRange(primeiraLinha, 1, numLinhas, maxCol).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPreliminar.gs",
+      "line": 86,
+      "code": "const dadosEmpUni = pre.getRange(primeiraLinha, 1, numLinhas, Math.max(C.EMP, C.UNI)).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPreliminar.gs",
+      "line": 87,
+      "code": "const controles = pre.getRange(primeiraLinha, 1, numLinhas, ultimaColControle).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SheetPreliminar.gs",
+      "line": 89,
+      "code": "const cabecalhosChecklist = pre.getRange(linhaHeader, C.CHECKLIST_INI, 1, C.CHECKLIST_FIM - C.CHECKLIST_INI + 1).getDisplayValues()[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SheetPreliminar.gs",
+      "line": 263,
+      "code": "const dados = pre.getRange(primeiraLinha, 1, numLinhas, maxCol).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 22,
+      "code": "const dadosObra = sheetObra.getRange(rowStart, 1, numRows, C_OBRA.CHAVE).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 30,
+      "code": "dadosPedAll = abaPedidos.getRange(iniPed, 1, lastPed - iniPed + 1, C_PED.CHAVE).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 110,
+      "code": "abaPedidos.getRange(iniPed, 1, dadosPedAll.length, C_PED.CHAVE).setValues(dadosPedAll);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 117,
+      "code": "abaPedidos.getRange(linhaDest, 1, 1, C_PED.CHAVE).setValues([dados]);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 156,
+      "code": "const dadosObra = sheetObra.getRange(linhaIniObra, 1, numLinhasObra, C_OBRA.CHAVE).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 163,
+      "code": "dadosPed = abaPedidos.getRange(linhaIniPed, 1, numRowsPed, C_PED.CHAVE).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 239,
+      "code": "abaPedidos.getRange(linhaIniPed, 1, rowsParaLimpar, C_PED.CHAVE).clearContent();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 251,
+      "code": "abaPedidos.getRange(linhaIniPed, 1, listaFinalPedidos.length, C_PED.CHAVE).setValues(listaFinalPedidos);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 277,
+      "code": "const dadosObra = sheetObra.getRange(rowStart, 1, numRows, maxColObra).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 295,
+      "code": "const dadosPed = abaPedidos.getRange(iniPed, 1, numRowsPed, maxColPed).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 331,
+      "code": "const chave = String(dados[i][0]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 350,
+      "code": "if (String(chaves[i][0]).trim() === String(chave).trim()) return ini + i;",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 367,
+      "code": "if (String(chaves[i][0]).trim() === String(chave).trim()) return ini + i;",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 407,
+      "code": "const empOriginal = String(valsEmp[i][0]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 418,
+      "code": ".filter(r => textoNormalizadoSemAcento_(r[0]) === empBusca)",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 419,
+      "code": ".map(r => String(r[1]).trim())",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 461,
+      "code": "const valsA = pre.getRange(linhaIni, 1, last - linhaIni + 1, 1).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 463,
+      "code": "if (CONFIG.STATUS.MARCADOR_BASE.test(valsA[i][0])) {",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 497,
+      "code": "range: abaPedidos.getRange(obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS), 1, abaPedidos.getLastRow(), 9),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_9"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 522,
+      "code": "const registrosInfo = info.getRange(linhaInicialInfo, 1, lastInfo - linhaInicialInfo + 1, maxColInfo).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 542,
+      "code": "? pre.getRange(linhaHeaderPre, 1, 1, lastColPre).getDisplayValues()[0]",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 542,
+      "code": "? pre.getRange(linhaHeaderPre, 1, 1, lastColPre).getDisplayValues()[0]",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 559,
+      "code": "const dadosPre = pre.getRange(linhaInicialPre, 1, lastPre - linhaInicialPre + 1, 2).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_2"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 602,
+      "code": "const origem = pre.getRange(linhaMolde, 1, 1, maxCols);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 603,
+      "code": "const alvo = pre.getRange(linhaInicialPre, 1, qtd, maxCols);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 658,
+      "code": "const minRow = linhas[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 674,
+      "code": "pre.getRange(minRow, 2, maxRow - minRow + 1, 1).clearDataValidations();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 693,
+      "code": "const valoresA = abaPedidos.getRange(linhaInicial, 1, limiteBusca - linhaInicial + 1, 1).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 717,
+      "code": "const valsA = aba.getRange(linhaInicial, 1, last - linhaInicial + 1, 1).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 752,
+      "code": "const dados = info.getRange(linhaIniInfo, 1, numLinhas, numCols).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 835,
+      "code": "const emp = String(existentes[i][0]).trim().toUpperCase();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 836,
+      "code": "const uni = String(existentes[i][1]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 843,
+      "code": "const emp = String(listaEmpUni[i][0]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 844,
+      "code": "const uni = String(listaEmpUni[i][1]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 894,
+      "code": "const c = String(chavesObra[i][0]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 911,
+      "code": "const chavePed = String(chavesPedidos[i][0]).trim();",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 972,
+      "code": "const dados = sheet.getRange(rowStart, 1, numRows, 2).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_2"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1001,
+      "code": "const dadosOco = abaOco.getRange(iniOco, 1, lastOco - iniOco + 1, Math.max(C_OCO.EMP, C_OCO.UNI, C_OCO.STATUS_GERAL)).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1024,
+      "code": "const rangePre = abaPre.getRange(iniPre, 1, numRowsPre, maxColPre);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1071,
+      "code": "const dadosPre = pre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1100,
+      "code": "const rangeInfo = info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, Math.max(C_INFO.EMP, C_INFO.UNI));",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1162,
+      "code": "const dadosEdicao = abaPedidos.getRange(rowStart, 1, numRows, abaPedidos.getLastColumn()).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1184,
+      "code": "const rangeObra = abaObra.getRange(iniObra, 1, lastObra - iniObra + 1, C_OBRA.CHAVE);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1223,
+      "code": "range: abaPedidos.getRange(obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS), 1, abaPedidos.getLastRow(), 9),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_9"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1255,
+      "code": "const dadosEntrega = entrega.getRange(rowStart, 1, numRows, Math.max(C_ENTREGA.EMP, C_ENTREGA.UNI)).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1263,
+      "code": "const dadosPre = pre.getRange(preIni, 1, preLast - preIni + 1, Math.max(C_PRE.EMP, C_PRE.UNI, C_PRE.RESP_OPR, C_PRE.RESP_ADM)).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1313,
+      "code": "range: entrega.getRange(ini, 1, last - ini + 1, 1), // simula alcance englobando coluna A (EMP)",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1420,
+      "code": "const dados = abaPre.getRange(ini, 1, last - ini + 1, Math.max(C.EMP, C.UNI, C.DATA_LOTE)).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1461,
+      "code": "const dados   = sheetObra.getRange(rowStart, 1, numRows, numCols).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1528,
+      "code": "const dadosEnt = entrega.getRange(iniEnt, 1, lastEnt - iniEnt + 1, Math.max(C_ENT.UNI, C_ENT.STATUS_GERAL || 0)).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1543,
+      "code": "const rangeInfo = info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, Math.max(C_INFO.EMP, C_INFO.UNI));",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1576,
+      "code": "range: obra.getRange(ini, 1, last - ini + 1, 1),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1670,
+      "code": "{ range: obra.getRange(ini, 1, last - ini + 1, 1), source: ss },",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1703,
+      "code": "const fakeEvent = { range: info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, 1) };",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1732,
+      "code": "const dadosInfo = info.getRange(rowStart, 1, numRows, maxColInfo).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1757,
+      "code": "const dadosObra = obra.getRange(iniObra, 1, numObraRows, maxColObra).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1824,
+      "code": "const dados = sheetObra.getRange(rowStart, 1, numRows, maxCol).getValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1850,
+      "code": "range: obra.getRange(ini, 1, last - ini + 1, 1),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1882,
+      "code": "const dadosInfo = abaInfo.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1905,
+      "code": "const dadosPre = abaPre.getRange(iniPre, 1, lastPre - iniPre + 1, maxColPre).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1914,
+      "code": "etiquetas.push([999999]); // Marcador vai pro fundo absoluto",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_999999"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1923,
+      "code": "etiquetas.push([99999]); // Itens não listados, brancos ou lixos caem pro fundo",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_99999"
+    },
+    {
+      "file": "scripts\\SyncLogic.gs",
+      "line": 1936,
+      "code": "const rangeTotal = abaPre.getRange(iniPre, 1, etiquetas.length, colTemp);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 79,
+      "code": "sheetObra.getRange(novaLinhaObra, 1, 1, dadosTesteObra[0].length).setValues(dadosTesteObra);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 83,
+      "code": "range: sheetObra.getRange(novaLinhaObra, 1, 1, C_OBRA.ATRELADO),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 94,
+      "code": "const dadosPedidos = abaPedidos.getRange(iniPed, 1, Math.max(1, lastPed - iniPed + 1), C_PED.EMP).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 116,
+      "code": "const dadosPedidos2Before = abaPedidos.getRange(iniPed, 1, Math.max(1, lastPed2Before - iniPed + 1), C_PED.EMP).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 125,
+      "code": "sheetObra.getRange(novaLinhaObra2, 1, 1, dadosTesteObra2[0].length).setValues(dadosTesteObra2);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 128,
+      "code": "range: sheetObra.getRange(novaLinhaObra2, 1, 1, C_OBRA.ATRELADO),",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 136,
+      "code": "const dadosPedidos2After = abaPedidos.getRange(iniPed, 1, Math.max(1, lastPed2After - iniPed + 1), C_PED.EMP).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Tests.gs",
+      "line": 364,
+      "code": "const status = dados[i][1];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 71,
+      "code": "const dia = Number(m[1]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 72,
+      "code": "const mes = Number(m[2]) - 1;",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_2"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 73,
+      "code": "let ano = Number(m[3]);",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_3"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 110,
+      "code": "const cabecalhos = aba.getRange(linhaBusca, 1, 1, lastCol).getDisplayValues()[0];",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 110,
+      "code": "const cabecalhos = aba.getRange(linhaBusca, 1, 1, lastCol).getDisplayValues()[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 143,
+      "code": "const dados = aba.getRange(linhaInicialDados, 1, numRows, lastCol).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 220,
+      "code": "if (String(values[i][0]).trim() !== \"\") return i + 1;",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 385,
+      "code": "const dadosInfo = info.getRange(iniInfo, 1, lastInfo - iniInfo + 1, maxColInfo).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 399,
+      "code": "const dadosChaveObra = obra.getRange(iniObra, 1, total, maxColChave).getDisplayValues();",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 444,
+      "code": "const rangeSort = obra.getRange(iniObra, 1, total, colSeqGlobal);",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 459,
+      "code": "const spacerRange = obra.getRange(spacerRow, 1, 1, obra.getLastColumn());",
+      "pattern": "getRange_numeric",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "scripts\\Utils.gs",
+      "line": 460,
+      "code": "const spacerVals = spacerRange.getValues()[0];",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "tests.js",
+      "line": 230,
+      "code": "suite4.assertEqual(dados[0][0], \"EMPREENDIMENTO\", \"Cabeçalho correto\");",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_0"
+    },
+    {
+      "file": "tests.js",
+      "line": 231,
+      "code": "suite4.assertEqual(dados[1][0], \"MODERN BUNTANTÃ\", \"Primeiro EMP correto\");",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    },
+    {
+      "file": "tests.js",
+      "line": 239,
+      "code": "suite4.assertEqual(dados[1][1], \"11999999999\", \"Contato do primeiro fornecedor\");",
+      "pattern": "array_index",
+      "suggestion": "SUGGESTED_HEADER_COL_1"
+    }
+  ]
+}

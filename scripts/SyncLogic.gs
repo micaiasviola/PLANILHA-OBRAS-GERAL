@@ -1075,9 +1075,20 @@ function sincronizarInformacoesGeraisDesdePreliminar_(exibirAlerta) {
     const emp = String(dadosPre[i][C_PRE.EMP - 1]).trim().toUpperCase();
     const uni = String(dadosPre[i][C_PRE.UNI - 1]).trim();
     if (emp && uni) {
+      // Normaliza valores vindos da Preliminar: trata explicitamente o texto "LIMPO"
+      let pend = C_PRE.RESUMO_PENDENCIAS > 0 ? dadosPre[i][C_PRE.RESUMO_PENDENCIAS - 1] : "";
+      let oco  = C_PRE.RESUMO_OCORRENCIAS  > 0 ? dadosPre[i][C_PRE.RESUMO_OCORRENCIAS  - 1] : "";
+
+      try {
+        if (typeof pend === 'string' && pend.trim().toUpperCase() === 'LIMPO') pend = "";
+      } catch (e) { /* noop */ }
+      try {
+        if (typeof oco === 'string' && oco.trim().toUpperCase() === 'LIMPO') oco = "";
+      } catch (e) { /* noop */ }
+
       mapaDados.set(`${emp}|${uni}`, {
-        pendencias: C_PRE.RESUMO_PENDENCIAS > 0 ? dadosPre[i][C_PRE.RESUMO_PENDENCIAS - 1] : "",
-        ocorrencias: C_PRE.RESUMO_OCORRENCIAS > 0 ? dadosPre[i][C_PRE.RESUMO_OCORRENCIAS - 1] : ""
+        pendencias: pend,
+        ocorrencias: oco
       });
     }
   }

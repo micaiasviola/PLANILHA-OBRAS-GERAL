@@ -36,3 +36,4 @@ Instruções para o outro agente (append seguro):
 
 Obs: este arquivo foi criado automaticamente para suportar monitoramento entre agentes. Mantê-lo curto e legível.
 - 2026-04-08T19:10:08.091Z | Copilot-Local | REVALIDATE_POST_SORT | Revalidação de subcategorias após ordenação | commit: 0577002 
+- 2026-04-08T20:12:07.017Z | Copilot-Local | REMOVE_LIMPO_OCORRENCIAS | Remove 'LIMPO' em ocorrências automatizadas | commit: c9cee9d 
