@@ -493,8 +493,10 @@ function sincronizarPedidosParaFaseObraCompleta_(exibirAlerta) {
   if (!abaPedidos) return;
 
   // Lógica de sincronização em lote simplificada para o novo modelo
+  const C_PED = resolveSheetColumns_(abaPedidos, CONFIG.HEADERS_COLS.PEDIDOS, CONFIG.COLUMNS.PEDIDOS);
+  const fakeRangeWidth = Math.max((C_PED.CHAVE || 0), (C_PED.DATA_AGENDADO_ADM || 0), (C_PED.FORNECEDOR || 0), (C_PED.CONTATO || 0), 1);
   const fakeEvent = {
-    range: abaPedidos.getRange(obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS), 1, abaPedidos.getLastRow(), 9),
+    range: abaPedidos.getRange(obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS), 1, abaPedidos.getLastRow(), fakeRangeWidth),
     source: ss
   };
   sincronizarPedidosParaFaseObra_(fakeEvent);
