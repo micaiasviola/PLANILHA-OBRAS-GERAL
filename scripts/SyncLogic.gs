@@ -640,8 +640,8 @@ function sincronizarPreliminarDesdeInformacoesGerais_(chavesAlvo, exibirAlerta) 
   for (const a of atualizacoes) {
     const { rowPre, infoRow, isNova } = a;
 
-    registrarEscrita(rowPre, 1, String(infoRow[C_INFO.EMP - 1] || "").trim());
-    registrarEscrita(rowPre, 2, String(infoRow[C_INFO.UNI - 1] || "").trim());
+    registrarEscrita(rowPre, C_PRE.EMP, String(infoRow[C_INFO.EMP - 1] || "").trim());
+    registrarEscrita(rowPre, C_PRE.UNI, String(infoRow[C_INFO.UNI - 1] || "").trim());
     registrarEscrita(rowPre, mapeamento.colDataLote, infoRow[C_INFO.DATA_LOTE - 1]);
     registrarEscrita(rowPre, mapeamento.colDataPrazo, infoRow[C_INFO.DATA_PRAZO - 1]);
     registrarEscrita(rowPre, mapeamento.colFaseMacro, infoRow[C_INFO.FASE_MACRO - 1]);

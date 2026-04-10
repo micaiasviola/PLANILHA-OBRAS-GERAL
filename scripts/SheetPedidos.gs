@@ -60,11 +60,11 @@ function buscarContatoFornecedor_(e) {
     linhasBuscaHeader
   );
 
-  // 2) Se não encontrou cabeçalho, assume Backup sem cabeçalho e usa índices fixos
+  // 2) Se não encontrou cabeçalho, assume Backup sem cabeçalho e usa índices padrão do CONFIG como fallback
   if (colFornecedorBackup <= 0 || colContatoBackup <= 0) {
-    console.log("Aba Backup sem cabeçalhos detectada. Usando índices fixos: FORNECEDOR=col10, CONTATO=col11");
-    colFornecedorBackup = 10;  // Coluna J (FORNECEDOR típico)
-    colContatoBackup = 11;     // Coluna K (CONTATO típico)
+    console.log("Aba Backup sem cabeçalhos detectada. Usando índices padrão de CONFIG.COLUMNS.PEDIDOS: FORNECEDOR, CONTATO");
+    colFornecedorBackup = (CONFIG && CONFIG.COLUMNS && CONFIG.COLUMNS.PEDIDOS && CONFIG.COLUMNS.PEDIDOS.FORNECEDOR) || 10;  // fallback para Coluna J
+    colContatoBackup = (CONFIG && CONFIG.COLUMNS && CONFIG.COLUMNS.PEDIDOS && CONFIG.COLUMNS.PEDIDOS.CONTATO) || 11;     // fallback para Coluna K
   }
 
   const maxCol = Math.max(colFornecedorBackup, colContatoBackup);
