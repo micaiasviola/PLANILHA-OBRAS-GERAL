@@ -246,9 +246,9 @@ function configurarColunaEnviarEntregaInfoGerais() {
 
   const linhaHeader = obterLinhaInicialPorAba(CONFIG.SHEETS.INFO_GERAIS) - 1;
 
-  // Se não existir, cria após RESP ADM (Col 10)
+  // Se não existir, cria após RESP ADM (usa C.RESP_ADM como base quando disponível, senão 10)
   if (colAlvo <= 0) {
-    const colBase = 10; // RESP ADM
+    const colBase = (C.RESP_ADM && C.RESP_ADM > 0) ? C.RESP_ADM : 10; // RESP ADM (header-resolved)
     info.insertColumnsAfter(colBase, 1);
     colAlvo = colBase + 1;
     info.getRange(linhaHeader, colAlvo).setValue("ENVIAR FASE-ENTREGA");
