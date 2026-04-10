@@ -18,6 +18,8 @@ function onOpen() {
     .addItem("📑 Ordenar Fase-Preliminar (Base INFO. GERAIS)", "ordenarPreliminarIgualInformacoesGerais")
     .addItem("🔄 Atualizar TODAS AS PENDÊNCIAS (Sinc. Global)", "sincronizacaoManualGlobal")
     .addItem("⏯️ Reordenar FASE-OBRA (Manual)", "executarAtualizarFaseObraDiaria")
+    .addSeparator()
+    .addItem("💳 Pagamentos", "abrirPagamentos")
     .addToUi();
 
   // Menu técnico (manutenção/admin).
