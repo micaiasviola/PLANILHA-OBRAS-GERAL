@@ -19,15 +19,17 @@ function sincronizarPedidosHousiPorEdicao_(e) {
     const C_PED = resolveSheetColumns_(abaPedidos, CONFIG.HEADERS_COLS.PEDIDOS, CONFIG.COLUMNS.PEDIDOS);
 
     // 1) Lê dados da obra em batch
-    const dadosObra = sheetObra.getRange(rowStart, 1, numRows, C_OBRA.CHAVE).getValues();
+    const maxColsObra = Math.max(C_OBRA.CHAVE || 0, C_OBRA.ATRELADO || 0, C_OBRA.EMP || 0, C_OBRA.UNI || 0, C_OBRA.CAT || 0, C_OBRA.SUB || 0, C_OBRA.OPR || 0, C_OBRA.ADM || 0, C_OBRA.TIPO || 0, C_OBRA.DATA_SOLICITADO_OPR || 0, C_OBRA.DATA_AGENDADO_ADM || 0);
+    const dadosObra = sheetObra.getRange(rowStart, 1, numRows, Math.max(1, maxColsObra)).getValues();
 
     // 2) Lê TODOS os pedidos existentes em batch (1 chamada)
     const iniPed = obterLinhaInicialPorAba(CONFIG.SHEETS.PEDIDOS);
     const lastPed = abaPedidos.getLastRow();
     let dadosPedAll = [];
     const mapaPedIdx = new Map(); // chave → índice no array
+    const maxColsPed = Math.max(C_PED.CHAVE || 0, C_PED.EMP || 0, C_PED.UNI || 0, C_PED.OPR || 0, C_PED.ADM || 0, C_PED.TIPO || 0, C_PED.CAT || 0, C_PED.SUB || 0, C_PED.DATA_SOLICITADO_OPR || 0, C_PED.DATA_AGENDADO_ADM || 0, C_PED.FORNECEDOR || 0, C_PED.CONTATO || 0);
     if (lastPed >= iniPed) {
-      dadosPedAll = abaPedidos.getRange(iniPed, 1, lastPed - iniPed + 1, C_PED.CHAVE).getValues();
+      dadosPedAll = abaPedidos.getRange(iniPed, 1, lastPed - iniPed + 1, Math.max(1, maxColsPed)).getValues();
       for (let j = 0; j < dadosPedAll.length; j++) {
         const ch = String(dadosPedAll[j][C_PED.CHAVE - 1] || "").trim();
         if (ch) mapaPedIdx.set(ch, j);
@@ -107,14 +109,14 @@ function sincronizarPedidosHousiPorEdicao_(e) {
 
     // 4) Flush batch — atualiza pedidos existentes (1 chamada)
     if (lastPed >= iniPed && dadosPedAll.length > 0) {
-      abaPedidos.getRange(iniPed, 1, dadosPedAll.length, C_PED.CHAVE).setValues(dadosPedAll);
+      abaPedidos.getRange(iniPed, 1, dadosPedAll.length, Math.max(1, maxColsPed)).setValues(dadosPedAll);
     }
 
     // 5) Flush — novas linhas de pedidos
     if (linhasParaEscreverNoPedido.length > 0) {
       for (const [linhaDest, dados] of linhasParaEscreverNoPedido) {
         garantirLinhasAte_(abaPedidos, linhaDest);
-        abaPedidos.getRange(linhaDest, 1, 1, C_PED.CHAVE).setValues([dados]);
+        abaPedidos.getRange(linhaDest, 1, 1, Math.max(1, maxColsPed)).setValues([dados]);
       }
     }
 
@@ -153,14 +155,16 @@ function sincronizarTodosPedidosHousi() {
 
     // 1) LÊ TUDO DA OBRA EM UMA REQUISIÇÃO
     const numLinhasObra = lastObra - linhaIniObra + 1;
-    const dadosObra = sheetObra.getRange(linhaIniObra, 1, numLinhasObra, C_OBRA.CHAVE).getValues();
+    const maxColsObra = Math.max(C_OBRA.CHAVE || 0, C_OBRA.ATRELADO || 0, C_OBRA.EMP || 0, C_OBRA.UNI || 0, C_OBRA.CAT || 0, C_OBRA.SUB || 0, C_OBRA.OPR || 0, C_OBRA.ADM || 0, C_OBRA.TIPO || 0, C_OBRA.DATA_SOLICITADO_OPR || 0, C_OBRA.DATA_AGENDADO_ADM || 0);
+    const dadosObra = sheetObra.getRange(linhaIniObra, 1, numLinhasObra, Math.max(1, maxColsObra)).getValues();
     
     // 2) LÊ TUDO DE PEDIDOS EM UMA REQUISIÇÃO
     const lastPed = abaPedidos.getLastRow();
     let dadosPed = [];
     const numRowsPed = lastPed - linhaIniPed + 1;
     if (numRowsPed > 0) {
-        dadosPed = abaPedidos.getRange(linhaIniPed, 1, numRowsPed, C_PED.CHAVE).getValues();
+        const maxColsPed = Math.max(C_PED.CHAVE || 0, C_PED.EMP || 0, C_PED.UNI || 0, C_PED.OPR || 0, C_PED.ADM || 0, C_PED.TIPO || 0, C_PED.CAT || 0, C_PED.SUB || 0, C_PED.DATA_SOLICITADO_OPR || 0, C_PED.DATA_AGENDADO_ADM || 0, C_PED.FORNECEDOR || 0, C_PED.CONTATO || 0);
+        dadosPed = abaPedidos.getRange(linhaIniPed, 1, numRowsPed, Math.max(1, maxColsPed)).getValues();
     }
     
     // 3) INDEXA PEDIDOS (MAPA) POR CHAVE PARA BUSCA INSTANTÂNEA
