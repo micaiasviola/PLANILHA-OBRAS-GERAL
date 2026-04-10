@@ -213,3 +213,90 @@ function agregarResumoParaFaseObra(chave) {
 
   throw new Error('Serviço com CHAVE não encontrado em FASE-OBRA: ' + chave);
 }
+
+
+/**
+ * Synchronize (import) services from FASE-OBRA into PAGAMENTOS as initial payment rows.
+ * - Creates one initial PENDENTE parcela per service found with a non-zero total value
+ * - Skips services that already have a payment row (matching CHAVE)
+ */
+function sincronizarPagamentosDaFaseObra() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const S = CONFIG.SHEETS || {};
+  const obraName = S.OBRA || 'FASE-OBRA';
+  const obra = ss.getSheetByName(obraName);
+  const paySh = ss.getSheetByName('PAGAMENTOS');
+  if (!obra) throw new Error('Aba FASE-OBRA não encontrada.');
+  if (!paySh) throw new Error('Aba PAGAMENTOS não encontrada.');
+
+  const ini = obterLinhaInicialPorAba(obraName);
+  const lastRow = obra.getLastRow();
+  const lastCol = obra.getLastColumn();
+  if (lastRow < ini) { SpreadsheetApp.getUi().alert('FASE-OBRA não possui dados.'); return; }
+
+  const headerRow = obra.getRange(1,1,1,lastCol).getValues()[0].map(h=>String(h).trim());
+  const chaveIdx = headerRow.indexOf('CHAVE') !== -1 ? headerRow.indexOf('CHAVE') : headerRow.indexOf('CHAVE_SERVICO');
+  if (chaveIdx === -1) throw new Error('Coluna CHAVE não encontrada em FASE-OBRA.');
+
+  const totalCandidates = ['VALOR_TOTAL_SERVICO','VALOR_TOTAL','VALOR','VALOR_SERVICO','TOTAL_SERVICO'];
+  let totalIdx = -1; for (let c of totalCandidates) { const i = headerRow.indexOf(c); if (i !== -1) { totalIdx = i; break; } }
+
+  const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
+
+  const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h).trim());
+  const paymentsData = paySh.getDataRange().getValues();
+  const payChaveIdx = payHeaders.indexOf('CHAVE') !== -1 ? payHeaders.indexOf('CHAVE') : payHeaders.indexOf('CHAVE_SERVICO');
+
+  const rowsToAppend = [];
+  for (let r = 0; r < obraData.length; r++) {
+    const row = obraData[r];
+    const chave = row[chaveIdx];
+    if (!chave) continue;
+    // skip if already exists in payments
+    if (payChaveIdx !== -1) {
+      let exists = false;
+      for (let pr = 1; pr < paymentsData.length; pr++) {
+        if (String(paymentsData[pr][payChaveIdx]) === String(chave)) { exists = true; break; }
+      }
+      if (exists) continue;
+    }
+    const total = (totalIdx !== -1) ? Number(row[totalIdx]) || 0 : 0;
+    if (total === 0) continue;
+
+    // build payments row aligned to payHeaders
+    const out = new Array(payHeaders.length).fill('');
+    for (let i = 0; i < payHeaders.length; i++) {
+      const h = payHeaders[i];
+      if (h === 'PAYMENT_UUID' || h === 'PAYMENT_ID' || h === 'ID') out[i] = 'PAY-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+      else if (h === 'CHAVE' || h === 'CHAVE_SERVICO') out[i] = chave;
+      else if (h === 'EMPREENDIMENTO') {
+        const idx = headerRow.indexOf('EMPREENDIMENTO'); if (idx !== -1) out[i] = row[idx];
+      } else if (h === 'UNIDADE' || h === 'UNID') { const idx = headerRow.indexOf('UNIDADE'); if (idx !== -1) out[i] = row[idx]; }
+      else if (h === 'CATEGORIA') { const idx = headerRow.indexOf('CATEGORIA'); if (idx !== -1) out[i] = row[idx]; }
+      else if (h === 'SUBCATEGORIA') { const idx = headerRow.indexOf('SUBCATEGORIA'); if (idx !== -1) out[i] = row[idx]; }
+      else if (h === 'SERVICO') { const idx = headerRow.indexOf('SERVICO'); if (idx !== -1) out[i] = row[idx]; }
+      else if (h === 'PRESTADOR' || h === 'FORNECEDOR') out[i] = '';
+      else if (h === 'PARCELA_NUM' || h === 'PARCELA') out[i] = 1;
+      else if (h === 'VALOR' || h === 'VALOR_PARCELA' || h === 'VALOR_PARCELA') out[i] = total;
+      else if (h === 'DATA_PAGAMENTO' || h === 'DATA_PAGO' || h === 'DATA_PREVISTA') out[i] = '';
+      else if (h === 'STATUS') out[i] = 'PENDENTE';
+      else if (h === 'METODO_PAGAMENTO' || h === 'FORMA_PAGAMENTO') out[i] = '';
+      else if (h === 'NOTAS' || h === 'OBS' || h === 'DOCUMENTO_LINK') out[i] = '';
+      else if (h === 'CRIADO_POR' || h === 'CREATED_BY') out[i] = Session.getActiveUser().getEmail() || '';
+      else if (h === 'CRIADO_EM' || h === 'CREATED_AT') out[i] = new Date();
+      else if (h === 'ATUALIZADO_POR' || h === 'UPDATED_BY') out[i] = '';
+      else if (h === 'ATUALIZADO_EM' || h === 'UPDATED_AT') out[i] = '';
+    }
+    rowsToAppend.push(out);
+  }
+
+  if (rowsToAppend.length === 0) {
+    SpreadsheetApp.getUi().alert('Nenhum novo lançamento a importar da FASE-OBRA.');
+    return { imported: 0 };
+  }
+
+  const startRow = paySh.getLastRow() + 1;
+  paySh.getRange(startRow, 1, rowsToAppend.length, rowsToAppend[0].length).setValues(rowsToAppend);
+  SpreadsheetApp.getUi().alert('Importados ' + rowsToAppend.length + ' lançamentos para PAGAMENTOS.');
+  return { imported: rowsToAppend.length };
+}
