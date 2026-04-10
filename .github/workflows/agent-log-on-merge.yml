@@ -45,19 +45,18 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "chore(agent-logs): append PR #${PR_NUMBER} merged log [skip ci]"
-            if git push origin HEAD:main; then
-              echo "Log pushed to main"
-            else
-              echo "Push failed, creating fallback branch and PR"
-              BRANCH="agent-log/pr-${PR_NUMBER}-$(date -u +%Y%m%d%H%M%S)"
-              git push origin HEAD:"$BRANCH"
+            echo "Creating fallback branch and PR for agent-log entry"
+            BRANCH="agent-log/pr-${PR_NUMBER}-$(date -u +%Y%m%d%H%M%S)"
+            git push origin HEAD:"$BRANCH"
 
-              PAYLOAD=$(printf '%s' "{\"title\":\"Append AGENT log entry for PR #${PR_NUMBER}\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry for PR #${PR_NUMBER} (workflow couldn'\"t push to main due to branch protection).\"}")
+            PAYLOAD=$(cat <<EOF
+{"title":"Append AGENT log entry for PR #${PR_NUMBER}","head":"${BRANCH}","base":"main","body":"Automated agent log entry for PR #${PR_NUMBER} (created by agent-log-on-merge workflow)."}
+EOF
+)
 
-              curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
-                https://api.github.com/repos/${REPO}/pulls \
-                -d "$PAYLOAD"
-            fi
+            curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+              https://api.github.com/repos/${REPO}/pulls \
+              -d "$PAYLOAD"
           fi
 
       - name: Notify on push failure (note)
