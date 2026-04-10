@@ -1,0 +1,75 @@
+name: Append AGENT-LOG on Push
+
+on:
+  push:
+    # ignore commits made by agent-log itself via commit message check/actor guard
+    branches: ['**']
+
+jobs:
+  append-log:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Append AGENT log entry for push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+
+          # Avoid infinite loops: if this workflow was triggered by a commit from GitHub Actions, skip
+          if [ "${GITHUB_ACTOR}" = "github-actions[bot]" ] || [ "${GITHUB_ACTOR}" = "github-actions" ]; then
+            echo "Triggered by GitHub Actions actor (${GITHUB_ACTOR}) - skipping agent-log append."
+            exit 0
+          fi
+
+          # Skip if last commit message already indicates agent-log
+          LAST_MSG=$(git log -1 --pretty=%B || true)
+          if echo "$LAST_MSG" | grep -qi "agent-log:"; then
+            echo "Last commit appears to be agent-log. Skipping to avoid loop."
+            exit 0
+          fi
+
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          BRANCH=${GITHUB_REF#refs/heads/}
+          ENTRY="- ${TS} | PushAgent | PUSH | branch:${BRANCH} | commit: ${GITHUB_SHA}"
+
+          if [ ! -f AGENT-LOGS.md ]; then
+            echo "# AGENT-LOGS" > AGENT-LOGS.md
+            echo "(Autogerado pelo workflow agent-log-on-push)" >> AGENT-LOGS.md
+            echo "" >> AGENT-LOGS.md
+          fi
+
+          echo "$ENTRY" >> AGENT-LOGS.md
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add AGENT-LOGS.md
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+
+          COMMIT_MSG="agent-log: ${TS} PUSH ${BRANCH} ${GITHUB_SHA}"
+          git commit -m "$COMMIT_MSG" || true
+
+          # Try to push to the same branch. If it fails (protected branch), push to a fallback branch.
+          if git push origin HEAD:"${BRANCH}"; then
+            echo "Agent log appended and pushed to ${BRANCH}"
+          else
+            FALLBACK_BRANCH="agent-log/push-${GITHUB_SHA:0:7}-$(date -u +%Y%m%d%H%M%S)"
+            echo "Push to ${BRANCH} failed; pushing to fallback branch ${FALLBACK_BRANCH}"
+            git push origin HEAD:"${FALLBACK_BRANCH}" || true
+            echo "Fallback branch pushed: ${FALLBACK_BRANCH}. Please review/merge to consolidate logs."
+          fi
+
+      - name: Done
+        run: echo "agent-log-on-push finished"
