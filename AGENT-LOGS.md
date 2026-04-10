@@ -62,3 +62,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 2026-04-10T18:04:16Z | PR-MERGER(micaiasviola) | PR-MERGED | Append AGENT log entry | commit: 91446d685f393615708a003a16c9bcbbfa06389f | pr: #32
 2026-04-10T18:07:48Z | PUSH_TO_MAIN | ci/test: trigger agent-log workflows | commit: 359d7236227ebfe03ac1b4723d3b91a5e7147c8e | pusher: micaiasviola
 2026-04-10T18:47:37Z | PUSH_TO_MAIN | feat(wrapper): adicionar compatibilidade para funções de menu legadas | commit: b477780c1e96edea6ceb030058a9468fa09866a5 | pusher: micaiasviola
+2026-04-10T21:30:42Z | PUSH_TO_MAIN | chore(agent-logs): structured JSON log lines for agent logs | commit: f471cd2a3472e9642cf05ede8e24630733d971af | pusher: micaiasviola
