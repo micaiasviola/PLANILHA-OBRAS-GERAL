@@ -77,7 +77,7 @@ jobs:
           fi
 
           # Fallback: create a branch with the log change and open a PR against main
-          BRANCH="agent-log/entry-$(date -u +%Y%m%d%H%M%S)"
+          BRANCH="agent-log/entry-${GITHUB_RUN_ID}-$(date -u +%Y%m%d%H%M%S)"
           git commit -m "chore(agent-logs): append automated log entry [skip ci]" || true
           git push origin HEAD:"${BRANCH}"
 
