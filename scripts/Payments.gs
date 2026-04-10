@@ -20,6 +20,37 @@ function abrirPagamentos() {
   }
 }
 
+/** Resolve column mapping with aliases for PAGAMENTOS sheet. Returns 0-based indices or -1 if missing. */
+function resolvePaymentsColMap(sh) {
+  const data = sh.getDataRange().getValues();
+  const headers = (data && data.length) ? data[0] : [];
+  const idx = {};
+  headers.forEach((h, i) => { idx[String(h).trim()] = i; });
+  const pick = (...names) => { for (const n of names) if (typeof idx[n] !== 'undefined') return idx[n]; return -1; };
+  return {
+    ID: pick('ID','PAYMENT_UUID','PAYMENT_ID','PAY-'),
+    CHAVE_SERVICO: pick('CHAVE_SERVICO','CHAVE','CHAVE_SERVICO'),
+    EMPREENDIMENTO: pick('EMPREENDIMENTO','EMPREEND','EMPREENDIMENTO'),
+    UNID: pick('UNID','UNIDADE'),
+    CATEGORIA: pick('CATEGORIA'),
+    SUBCATEGORIA: pick('SUBCATEGORIA'),
+    PRESTADOR: pick('PRESTADOR','FORNECEDOR'),
+    PARCELA_NUM: pick('PARCELA_NUM','PARCELA'),
+    TOTAL_SERVICO: pick('TOTAL_SERVICO','VALOR_TOTAL_SERVICO','VALOR_TOTAL','TOTAL_SERVICO','TOTAL'),
+    VALOR: pick('VALOR','VALOR_PARCELA','VALOR_PARCELA','VALOR'),
+    DATA_PREVISTA: pick('DATA_PREVISTA','DATA_PREVISTO'),
+    DATA_PAGAMENTO: pick('DATA_PAGAMENTO','DATA_PAGO'),
+    STATUS: pick('STATUS'),
+    FORMA_PAGAMENTO: pick('FORMA_PAGAMENTO','METODO_PAGAMENTO','FORMA_PAGTO'),
+    DOCUMENTO_LINK: pick('DOCUMENTO_LINK','NOTAS'),
+    OBS: pick('OBS','NOTAS'),
+    CREATED_BY: pick('CRIADO_POR','CREATED_BY','CRIADO_POR'),
+    CREATED_AT: pick('CRIADO_EM','CREATED_AT','CRIADO_EM'),
+    UPDATED_BY: pick('ATUALIZADO_POR','UPDATED_BY','ATUALIZADO_POR'),
+    UPDATED_AT: pick('ATUALIZADO_EM','UPDATED_AT','ATUALIZADO_EM')
+  };
+}
+
 /** Quick creation wrapper used by menu. Expects a minimal payload. */
 function criarPagamentoRapido(payload) {
   // payload: {chave, prestador, valor, data_prevista, parcela_num}
@@ -68,7 +99,6 @@ function criarPagamento(opts) {
 
 /** Update an existing payment row by ID (partial update allowed). */
 function atualizarPagamento(id, changes) {
-  // This is a simple implementation: scan sheet for ID and merge changes
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName('PAGAMENTOS');
   if (!sh) throw new Error('Aba PAGAMENTOS não encontrada.');
@@ -81,19 +111,32 @@ function atualizarPagamento(id, changes) {
   }
   if (foundRow === -1) throw new Error('Pagamento ID não encontrado: ' + id);
 
-  // Map of header->col
+  // header->col 1-based map
   const headerIndex = {};
   for (let i = 0; i < headers.length; i++) headerIndex[headers[i]] = i+1;
 
-  const updates = [];
   for (const k in changes) {
     if (headerIndex[k]) {
       sh.getRange(foundRow, headerIndex[k]).setValue(changes[k]);
+      continue;
     }
+    // try canonical aliases
+    const canonical = {
+      'UPDATED_BY':'ATUALIZADO_POR','UPDATED_AT':'ATUALIZADO_EM','CREATED_BY':'CRIADO_POR','CREATED_AT':'CRIADO_EM',
+      'VALOR':'VALOR','VALOR_PARCELA':'VALOR','CHAVE_SERVICO':'CHAVE_SERVICO','CHAVE':'CHAVE_SERVICO'
+    };
+    const targetHeader = canonical[k];
+    if (targetHeader && headerIndex[targetHeader]) {
+      sh.getRange(foundRow, headerIndex[targetHeader]).setValue(changes[k]);
+      continue;
+    }
+    // ignore unknown keys
   }
-  // touch updated meta
-  if (headerIndex['UPDATED_BY']) sh.getRange(foundRow, headerIndex['UPDATED_BY']).setValue(Session.getActiveUser().getEmail() || '');
-  if (headerIndex['UPDATED_AT']) sh.getRange(foundRow, headerIndex['UPDATED_AT']).setValue(new Date());
+
+  // touch updated meta using resolved columns
+  const colMap = resolvePaymentsColMap(sh);
+  if (colMap.UPDATED_BY >= 0) sh.getRange(foundRow, colMap.UPDATED_BY + 1).setValue(Session.getActiveUser().getEmail() || '');
+  if (colMap.UPDATED_AT >= 0) sh.getRange(foundRow, colMap.UPDATED_AT + 1).setValue(new Date());
 
   return true;
 }
@@ -107,17 +150,17 @@ function validarSoma(chave) {
   if (!sh) throw new Error('Aba PAGAMENTOS não encontrada.');
 
   const data = sh.getDataRange().getValues();
-  const headers = data[0];
-  const colMap = {};
-  for (let i = 0; i < headers.length; i++) colMap[headers[i]] = i;
+  if (!data || data.length < 2) return { totalService: null, sumParcels: 0, diff: null };
+
+  const colMap = resolvePaymentsColMap(sh);
 
   let sum = 0;
   let totalService = null;
   for (let r = 1; r < data.length; r++) {
-    if (String(data[r][colMap['CHAVE_SERVICO']]) === String(chave)) {
-      const val = Number(data[r][colMap['VALOR']]) || 0;
+    if (colMap.CHAVE_SERVICO >= 0 && String(data[r][colMap.CHAVE_SERVICO]) === String(chave)) {
+      const val = (colMap.VALOR >= 0) ? (Number(data[r][colMap.VALOR]) || 0) : 0;
       sum += val;
-      if (!totalService && data[r][colMap['TOTAL_SERVICO']]) totalService = Number(data[r][colMap['TOTAL_SERVICO']]) || null;
+      if (colMap.TOTAL_SERVICO >= 0 && !totalService && data[r][colMap.TOTAL_SERVICO]) totalService = Number(data[r][colMap.TOTAL_SERVICO]) || null;
     }
   }
   return { totalService: totalService, sumParcels: sum, diff: (totalService !== null ? (totalService - sum) : null) };
@@ -136,21 +179,21 @@ function agregarResumoParaFaseObra(chave) {
   const obra = ss.getSheetByName('FASE-OBRA');
   if (!obra) throw new Error('Aba FASE-OBRA não encontrada.');
 
-  // Try to detect CHAVE column using helper (if present)
   try {
     const C = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
-    const chaveCol = C.CHAVE || C.CHAVE; // fallback
-    const ini = obterLinhaInicialPorAba('FASE-OBRA');
+    const chaveCol = C.CHAVE;
+    if (!chaveCol) throw new Error('Coluna CHAVE não encontrada na FASE-OBRA.');
+    const ini = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA || 'FASE-OBRA');
     const last = obra.getLastRow();
+    if (last < ini) throw new Error('FASE-OBRA não possui dados.');
     const vals = obra.getRange(ini, chaveCol, last - ini + 1, 1).getValues();
     for (let i = 0; i < vals.length; i++) {
       if (String(vals[i][0]) === String(chave)) {
         const row = ini + i;
-        // Ensure summary cols exist (PAID_SUM / PENDING_SUM) — choose columns near CHAVE or append
-        const paidCol = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0].indexOf('PAID_SUM')+1;
-        const pendingCol = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0].indexOf('PENDING_SUM')+1;
-        if (paidCol <= 0 || pendingCol <= 0) {
-          // append two columns at the end
+        const headerRow = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
+        const paidColIdx = headerRow.indexOf('PAID_SUM');
+        const pendingColIdx = headerRow.indexOf('PENDING_SUM');
+        if (paidColIdx === -1 || pendingColIdx === -1) {
           const lastCol = obra.getLastColumn();
           obra.insertColumnsAfter(lastCol, 2);
           obra.getRange(1, lastCol+1).setValue('PAID_SUM');
@@ -158,8 +201,8 @@ function agregarResumoParaFaseObra(chave) {
           obra.getRange(row, lastCol+1).setValue(paid);
           obra.getRange(row, lastCol+2).setValue(pending);
         } else {
-          obra.getRange(row, paidCol).setValue(paid);
-          obra.getRange(row, pendingCol).setValue(pending);
+          obra.getRange(row, paidColIdx+1).setValue(paid);
+          obra.getRange(row, pendingColIdx+1).setValue(pending);
         }
         return { paid: paid, pending: pending };
       }
