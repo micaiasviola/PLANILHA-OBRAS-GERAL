@@ -40,6 +40,7 @@ jobs:
       - name: Write AGENT-LOGS.md directly to main (prefer ACTIONS_PAT)
         env:
           ACTIONS_PAT: ${{ secrets.ACTIONS_PAT }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
         run: |
           set -eu
@@ -90,8 +91,12 @@ jobs:
           git commit -m "chore(agent-logs): append automated log entry [skip ci]" || true
           git push origin HEAD:"${BRANCH}"
 
-          PAYLOAD="{\"title\":\"Append AGENT log entry\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry created by agent-log-auto workflow.\"}"
-          curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${REPO}/pulls -d "$PAYLOAD"
+          if [ -n "${GITHUB_TOKEN:-}" ]; then
+            PAYLOAD="{\"title\":\"Append AGENT log entry\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry created by agent-log-auto workflow.\"}"
+            curl -s -X POST -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github+json" https://api.github.com/repos/${REPO}/pulls -d "$PAYLOAD"
+          else
+            echo "GITHUB_TOKEN not available; PR not created. Branch pushed: https://github.com/${REPO}/pull/new/${BRANCH}"
+          fi
 
       - name: Notify on failure (note)
         if: failure()
