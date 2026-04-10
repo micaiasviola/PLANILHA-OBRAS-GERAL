@@ -224,7 +224,20 @@ function gerarTemplatesPendentesFaseObra() {
 
     let unidadesAbertas = 0;
     const arrayLoteCompleto = [];
-    const numMaxColsLinha = C_OBRA.CHAVE;
+    const maxColsObra = Math.max(
+      C_OBRA.CHAVE || 0,
+      C_OBRA.EMP || 0,
+      C_OBRA.UNI || 0,
+      C_OBRA.OPR || 0,
+      C_OBRA.ADM || 0,
+      C_OBRA.TIPO || 0,
+      C_OBRA.CAT || 0,
+      C_OBRA.SUB || 0,
+      C_OBRA.ATRELADO || 0,
+      C_OBRA.DATA_SOLICITADO_OPR || 0,
+      C_OBRA.DATA_AGENDADO_ADM || 0
+    );
+    const numMaxColsLinha = Math.max(1, maxColsObra);
 
     // 2) Constrói as linhas virtualmente na memória
     for (let i = 0; i < dadosPre.length; i++) {
