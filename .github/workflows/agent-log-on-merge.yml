@@ -45,14 +45,37 @@ jobs:
             echo "No changes to commit."
           else
             git commit -m "chore(agent-logs): append PR #${PR_NUMBER} merged log [skip ci]"
-            if git push origin HEAD:main; then
-              echo "Log pushed to main"
-            else
-              echo "Push failed, creating fallback branch and PR"
-              BRANCH="agent-log/pr-${PR_NUMBER}-$(date -u +%Y%m%d%H%M%S)"
-              git push origin HEAD:"$BRANCH"
 
-              PAYLOAD=$(printf '%s' "{\"title\":\"Append AGENT log entry for PR #${PR_NUMBER}\",\"head\":\"${BRANCH}\",\"base\":\"main\",\"body\":\"Automated agent log entry for PR #${PR_NUMBER} (workflow couldn'\"t push to main due to branch protection).\"}")
+            PR_HEAD_REPO="${{ github.event.pull_request.head.repo.full_name }}"
+            PR_HEAD_REF="${{ github.event.pull_request.head.ref }}"
+
+            if [ "${PR_HEAD_REPO}" = "${REPO}" ]; then
+              echo "PR head is same-repo (${PR_HEAD_REPO}). Attempting to push commit to PR head branch: ${PR_HEAD_REF}"
+              if git push origin HEAD:"refs/heads/${PR_HEAD_REF}"; then
+                echo "Successfully pushed AGENT log commit to PR head branch: ${PR_HEAD_REF}"
+              else
+                echo "Push to PR head branch failed; creating fallback branch and PR for agent-log entry"
+                BRANCH="agent-log/pr-${PR_NUMBER}-$(date -u +%Y%m%d%H%M%S)"
+                git push origin HEAD:"${BRANCH}"
+
+                PAYLOAD=$(cat <<EOF
+{"title":"Append AGENT log entry for PR #${PR_NUMBER}","head":"${BRANCH}","base":"main","body":"Automated agent log entry for PR #${PR_NUMBER} (created by agent-log-on-merge workflow)."}
+EOF
+)
+
+                curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
+                  https://api.github.com/repos/${REPO}/pulls \
+                  -d "$PAYLOAD"
+              fi
+            else
+              echo "PR head is from a fork or different repo (${PR_HEAD_REPO}). Creating fallback branch and PR"
+              BRANCH="agent-log/pr-${PR_NUMBER}-$(date -u +%Y%m%d%H%M%S)"
+              git push origin HEAD:"${BRANCH}"
+
+              PAYLOAD=$(cat <<EOF
+{"title":"Append AGENT log entry for PR #${PR_NUMBER}","head":"${BRANCH}","base":"main","body":"Automated agent log entry for PR #${PR_NUMBER} (created by agent-log-on-merge workflow)."}
+EOF
+)
 
               curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github+json" \
                 https://api.github.com/repos/${REPO}/pulls \
