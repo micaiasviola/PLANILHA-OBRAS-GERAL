@@ -69,11 +69,44 @@ function criarPagamento(opts) {
     throw new Error('Aba PAGAMENTOS não encontrada. Crie o scaffold primeiro.');
   }
 
-  // Basic ID
-  const id = 'PAY-' + new Date().getTime();
+  // generate id
+  const id = 'PAY-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+
+  // Try to align to existing headers if present
+  const lastCol = sh.getLastColumn();
+  const headers = lastCol ? sh.getRange(1, 1, 1, lastCol).getValues()[0].map(h=>String(h).trim()) : [];
+  if (headers && headers.length) {
+    const out = new Array(headers.length).fill('');
+    for (let i = 0; i < headers.length; i++) {
+      const h = headers[i];
+      if (h === 'PAYMENT_UUID' || h === 'PAYMENT_ID' || h === 'ID') out[i] = id;
+      else if (h === 'CHAVE' || h === 'CHAVE_SERVICO') out[i] = opts.CHAVE_SERVICO || opts.CHAVE || '';
+      else if (h === 'EMPREENDIMENTO') out[i] = opts.EMPREENDIMENTO || '';
+      else if (h === 'UNIDADE' || h === 'UNID') out[i] = opts.UNID || opts.UNIDADE || '';
+      else if (h === 'CATEGORIA') out[i] = opts.CATEGORIA || '';
+      else if (h === 'SUBCATEGORIA') out[i] = opts.SUBCATEGORIA || '';
+      else if (h === 'SERVICO') out[i] = opts.SERVICO || '';
+      else if (h === 'PRESTADOR' || h === 'FORNECEDOR') out[i] = opts.PRESTADOR || '';
+      else if (h === 'PARCELA_NUM' || h === 'PARCELA') out[i] = opts.PARCELA_NUM || 1;
+      else if (h === 'TOTAL_SERVICO' || h === 'VALOR_TOTAL_SERVICO' || h === 'VALOR_TOTAL') out[i] = opts.TOTAL_SERVICO || opts.TOTAL || '';
+      else if (h === 'VALOR' || h === 'VALOR_PARCELA') out[i] = (typeof opts.VALOR !== 'undefined') ? opts.VALOR : (opts.TOTAL_SERVICO || opts.TOTAL || 0);
+      else if (h === 'DATA_PREVISTA' || h === 'DATA_PAGAMENTO' || h === 'DATA_PAGO') out[i] = opts.DATA_PREVISTA || opts.DATA_PAGAMENTO || '';
+      else if (h === 'STATUS') out[i] = opts.STATUS || 'PENDENTE';
+      else if (h === 'FORMA_PAGAMENTO' || h === 'METODO_PAGAMENTO') out[i] = opts.FORMA_PAGAMENTO || '';
+      else if (h === 'NOTAS' || h === 'OBS' || h === 'DOCUMENTO_LINK') out[i] = opts.OBS || '';
+      else if (h === 'CRIADO_POR' || h === 'CREATED_BY') out[i] = opts.CRIADO_POR || Session.getActiveUser().getEmail() || '';
+      else if (h === 'CRIADO_EM' || h === 'CREATED_AT') out[i] = opts.CRIADO_EM || new Date();
+      else if (h === 'ATUALIZADO_POR' || h === 'UPDATED_BY') out[i] = '';
+      else if (h === 'ATUALIZADO_EM' || h === 'UPDATED_AT') out[i] = '';
+    }
+    sh.getRange(sh.getLastRow() + 1, 1, 1, out.length).setValues([out]);
+    return id;
+  }
+
+  // Fallback: legacy positional row
   const row = [
     id,
-    opts.CHAVE_SERVICO || '',
+    opts.CHAVE_SERVICO || opts.CHAVE || '',
     opts.EMPREENDIMENTO || '',
     opts.UNID || '',
     opts.CATEGORIA || '',
@@ -93,7 +126,6 @@ function criarPagamento(opts) {
   ];
 
   sh.appendRow(row);
-  // return id for reference
   return id;
 }
 
