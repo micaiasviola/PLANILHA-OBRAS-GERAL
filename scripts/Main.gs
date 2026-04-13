@@ -44,6 +44,7 @@ function onOpen() {
     .addSeparator()
     .addItem("⏰ Criar acionador diário FASE-OBRA (03:30)", "criarTriggerDiariaAtualizarFaseObra_")
     .addToUi();
+  criarMenuPagamentos();
 }
 
 /**

@@ -246,6 +246,153 @@ function agregarResumoParaFaseObra(chave) {
   throw new Error('Serviço com CHAVE não encontrado em FASE-OBRA: ' + chave);
 }
 
+/** Create a small payments menu. Called from onOpen(). */
+function criarMenuPagamentos() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('💳 Pagamentos')
+    .addItem('Abrir PAGAMENTOS', 'abrirPagamentos')
+    .addItem('Sincronizar da FASE-OBRA', 'sincronizarPagamentosDaFaseObra')
+    .addItem('Importar (planilha manual)', 'sincronizarPagamentosDaPlanilhaManualPrompt')
+    .addToUi();
+}
+
+/** Prompt wrapper to ask for external sheet ID/URL and dry-run option. */
+function sincronizarPagamentosDaPlanilhaManualPrompt() {
+  const ui = SpreadsheetApp.getUi();
+  const resp = ui.prompt('Importar pagamentos (planilha manual)', 'Cole o ID ou URL da planilha manual (deixe vazio para usar a aba ativa desta planilha):', ui.ButtonSet.OK_CANCEL);
+  if (resp.getSelectedButton() !== ui.Button.OK) return;
+  const input = resp.getResponseText().trim();
+
+  const dry = ui.alert('Dry-run?', 'Executar em modo dry-run (não grava) e apenas mostrar o que seria importado?', ui.ButtonSet.YES_NO) === ui.Button.YES;
+  try {
+    const res = importarPagamentosDePlanilhaManual(input || null, dry);
+    ui.alert('Importação concluída', JSON.stringify(res), ui.ButtonSet.OK);
+  } catch (e) {
+    ui.alert('Erro na importação: ' + e.message);
+    console.error(e);
+  }
+}
+
+/**
+ * Import payments from another spreadsheet (manual control).
+ * - sheetIdOrUrl: optional. If null, use active sheet in current spreadsheet.
+ * - dryRun: if true, do not write; just return summary.
+ */
+function importarPagamentosDePlanilhaManual(sheetIdOrUrl, dryRun) {
+  const ui = SpreadsheetApp.getUi();
+  let srcSS;
+  if (!sheetIdOrUrl) {
+    srcSS = SpreadsheetApp.getActiveSpreadsheet();
+  } else {
+    // extract id from url or accept id
+    const m = String(sheetIdOrUrl).match(/[-\w]{25,}/);
+    if (!m) throw new Error('Não foi possível extrair ID da URL/entrada.');
+    srcSS = SpreadsheetApp.openById(m[0]);
+  }
+
+  const srcSh = srcSS.getSheets()[0];
+  const lastColSrc = srcSh.getLastColumn();
+  const lastRowSrc = srcSh.getLastRow();
+  if (lastRowSrc < 2) return { imported: 0, reason: 'planilha sem dados' };
+
+  const rawHeaders = srcSh.getRange(1,1,1,lastColSrc).getValues()[0].map(h=>String(h||'').trim());
+  const norm = (v) => String(v||'').toUpperCase().normalize('NFD').replace(/[ -\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
+  const normHeaders = rawHeaders.map(norm);
+  const findIdx = (names) => { const want = names.map(norm); for (let i=0;i<normHeaders.length;i++) if (want.indexOf(normHeaders[i])!==-1) return i; return -1; };
+
+  const empIdx = findIdx(['EMPREENDIMENTO','EMP']);
+  const prestIdx = findIdx(['PRESTADOR','FORNECEDOR']);
+  const dateIdx = findIdx(['DATA','DATA_PAGAMENTO','DATA_PAGO']);
+  const statusIdx = findIdx(['STATUS']);
+  const valIdx = findIdx(['VALOR','VALOR_PARCELA','VALOR_TOTAL']);
+  const chaveIdxSrc = findIdx(['CHAVE','CHAVE_SERVICO']);
+
+  const paySh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('PAGAMENTOS');
+  if (!paySh) throw new Error('Aba PAGAMENTOS não encontrada na planilha atual.');
+  const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
+  const paymentsData = paySh.getDataRange().getValues();
+
+  const payChaveIdx = payHeaders.indexOf('CHAVE') !== -1 ? payHeaders.indexOf('CHAVE') : payHeaders.indexOf('CHAVE_SERVICO');
+
+  const toImport = [];
+  const dupChecks = {};
+
+  const srcData = srcSh.getRange(2,1,lastRowSrc-1,lastColSrc).getValues();
+  for (let r=0;r<srcData.length;r++) {
+    const row = srcData[r];
+    const emp = empIdx>=0?row[empIdx]:'';
+    const prest = prestIdx>=0?row[prestIdx]:'';
+    const date = dateIdx>=0?row[dateIdx]:'';
+    const status = statusIdx>=0?row[statusIdx]:'';
+    const val = valIdx>=0?row[valIdx]:'';
+    const chave = chaveIdxSrc>=0?row[chaveIdxSrc]:'';
+
+    // normalize
+    const valNum = (typeof val === 'string') ? Number(String(val).replace(/[^0-9,.-]/g,'').replace(',','.')) : Number(val);
+    const dateVal = date instanceof Date ? date : (new Date(date));
+
+    // dedupe by chave if present, else by emp+prest+date+val
+    let isDup = false;
+    if (chave) {
+      if (payChaveIdx!==-1) {
+        for (let pr=1; pr<paymentsData.length; pr++) {
+          if (String(paymentsData[pr][payChaveIdx]) === String(chave)) { isDup = true; break; }
+        }
+      }
+    } else {
+      const key = [String(emp).trim().toUpperCase(), String(prest).trim().toUpperCase(), (dateVal?dateVal.toISOString().slice(0,10):''), String(valNum)].join('|');
+      if (dupChecks[key]) { isDup = true; }
+      dupChecks[key]=true;
+      // also scan paymentsData for same tuple
+      for (let pr=1; pr<paymentsData.length; pr++) {
+        const pEmp = String(paymentsData[pr][payHeaders.indexOf('EMPREENDIMENTO')]||'').trim().toUpperCase();
+        const pPrest = String(paymentsData[pr][payHeaders.indexOf('PRESTADOR')]||'').trim().toUpperCase();
+        const pDate = paymentsData[pr][payHeaders.indexOf('DATA_PAGAMENTO')] instanceof Date ? paymentsData[pr][payHeaders.indexOf('DATA_PAGAMENTO')].toISOString().slice(0,10) : String(paymentsData[pr][payHeaders.indexOf('DATA_PAGAMENTO')]||'');
+        const pVal = Number(paymentsData[pr][payHeaders.indexOf('VALOR')]||0);
+        if (pEmp===pEmp && pPrest===pPrest && pDate=== (dateVal?dateVal.toISOString().slice(0,10):'') && pVal===valNum) { isDup=true; break; }
+      }
+    }
+
+    if (isDup) continue;
+
+    // build out row aligned to payHeaders
+    const out = new Array(payHeaders.length).fill('');
+    for (let i=0;i<payHeaders.length;i++) {
+      const h = payHeaders[i];
+      if (h==='PAYMENT_UUID' || h==='PAYMENT_ID' || h==='ID') out[i] = 'PAY-' + Date.now() + '-' + Math.floor(Math.random()*1000);
+      else if (h==='CHAVE' || h==='CHAVE_SERVICO') out[i] = chave || '';
+      else if (h==='EMPREENDIMENTO') out[i] = emp || '';
+      else if (h==='PRESTADOR' || h==='FORNECEDOR') out[i] = prest || '';
+      else if (h==='DATA_PAGAMENTO' || h==='DATA_PAGO') out[i] = dateVal instanceof Date && !isNaN(dateVal) ? dateVal : '';
+      else if (h==='STATUS') out[i] = status || 'PENDENTE';
+      else if (h==='VALOR' || h==='VALOR_PARCELA') out[i] = isNaN(valNum)?'' : valNum;
+      else if (h==='CRIADO_POR' || h==='CREATED_BY') out[i] = Session.getActiveUser().getEmail()||'';
+      else if (h==='CRIADO_EM' || h==='CREATED_AT') out[i] = new Date();
+    }
+    toImport.push({out: out, chave: chave});
+  }
+
+  if (toImport.length===0) {
+    return { imported:0, reason: 'Nenhum novo lançamento a importar.' };
+  }
+
+  if (dryRun) {
+    return { imported: toImport.length, sample: toImport.slice(0,10).map(x=>x.out) };
+  }
+
+  // append
+  const startRow = paySh.getLastRow()+1;
+  paySh.getRange(startRow,1,toImport.length,toImport[0].out.length).setValues(toImport.map(x=>x.out));
+
+  // aggregate for chaves
+  const chaves = Array.from(new Set(toImport.map(x=>x.chave).filter(Boolean)));
+  for (let c of chaves) {
+    try { agregarResumoParaFaseObra(c); } catch(e) { console.warn('agregarResumo error for',c,e.message); }
+  }
+
+  return { imported: toImport.length };
+}
+
 
 /**
  * Synchronize (import) services from FASE-OBRA into PAGAMENTOS as initial payment rows.
