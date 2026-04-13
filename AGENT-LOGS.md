@@ -65,3 +65,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 2026-04-10T21:30:42Z | PUSH_TO_MAIN | chore(agent-logs): structured JSON log lines for agent logs | commit: f471cd2a3472e9642cf05ede8e24630733d971af | pusher: micaiasviola
 2026-04-10T22:29:07Z | PR-MERGER(micaiasviola) | PR-MERGED | feat(payments): módulo PAGAMENTOS + sincronização inicial | commit: e3e9864cd003ffa2b1a0d9eb08e89c9d464232a2 | pr: #33
 2026-04-10T22:29:09Z | PUSH_TO_MAIN | Merge pull request #33 from micaiasviola/feature/payments | commit: e3e9864cd003ffa2b1a0d9eb08e89c9d464232a2 | pusher: micaiasviola
+2026-04-13T14:02:00Z | PUSH_TO_MAIN | feat(payments): add importer for manual sheet and payments menu | commit: 486b1b3395dbe243ea91fa54898997518816624b | pusher: micaiasviola
