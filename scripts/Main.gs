@@ -72,7 +72,17 @@ function onEdit(e) {
     try {
       handlers[sheetName](e);
     } catch (err) {
-      SpreadsheetApp.getActiveSpreadsheet().toast("Erro na automação: " + err.message, "⚠️ Erro", 5);
+      // Suprimir toast visível quando o erro for de lock do documento — registrar em Logger apenas
+      try {
+        if (err && err.message && /Não foi possível obter lock do documento/.test(err.message)) {
+          Logger.log('Lock ocupado (suprimido toast): ' + err.message);
+        } else {
+          SpreadsheetApp.getActiveSpreadsheet().toast("Erro na automação: " + err.message, "⚠️ Erro", 5);
+        }
+      } catch (e) {
+        // Evita falha ao tentar mostrar toast em contextos sem UI
+        Logger.log('Falha ao exibir toast de erro: ' + (e && e.message));
+      }
       console.error(err);
     }
   }
