@@ -172,6 +172,19 @@ function detectarColunaChaveUUID_(aba, linhaInicialDados) {
  * Se não, gera um UUID randômico e estável.
  */
 function gerarUUID_() {
+  try {
+    // Prefer Apps Script UUID generator for strong uniqueness
+    if (typeof Utilities !== 'undefined' && typeof Utilities.getUuid === 'function') {
+      const full = Utilities.getUuid().toUpperCase().replace(/-/g, '');
+      // Keep a short legacy-friendly form: ID-<8hex>-<4hex>
+      const part1 = full.slice(0, 8);
+      const part2 = full.slice(8, 12);
+      return 'ID-' + part1 + '-' + part2;
+    }
+  } catch (e) {
+    // fallthrough to fallback
+  }
+  // Fallback: original (less robust) approach
   return "ID-" + Math.random().toString(36).substring(2, 9).toUpperCase() + "-" + new Date().getTime().toString(36).toUpperCase();
 }
 
