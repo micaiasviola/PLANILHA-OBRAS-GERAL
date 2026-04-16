@@ -92,3 +92,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 2026-04-16T19:14:49Z | PUSH_TO_MAIN | agent-log: 2026-04-16T19:14:40.543Z COMMIT_PUSH | commit: f29f1d86d4faa0a1b09a157c7646765fdbe0b289 | pusher: micaiasviola
 - 2026-04-16T19:19:39.313Z | CustomAgent | COMMIT_PUSH | Adiciona ignore list e integra aos agents | commit: f2e36d5 
 2026-04-16T19:19:46Z | PUSH_TO_MAIN | Adiciona .agents-ignore.json e integra ignore list aos agents (column-mapper + run-agent)\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> | commit: f2e36d5af32514ba6fd9aba6320241658fa00d21 | pusher: micaiasviola
+2026-04-16T19:19:46Z | PUSH_TO_MAIN | Adiciona .agents-ignore.json e integra ignore list aos agents (column-mapper + run-agent)\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> | commit: f2e36d5af32514ba6fd9aba6320241658fa00d21 | pusher: micaiasviola
