@@ -72,3 +72,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-16T14:06:17.100Z | CustomAgent | COMMIT_PUSH | auto | commit: 95475a6 
 - 2026-04-16T14:23:54.031Z | CustomAgent | COMMIT_PUSH | Atualiza lock e ajustes em pagamentos (substitui índices fixos) | commit: 3bbed27 | pr: 35
 - 2026-04-16T14:37:53.331Z | CustomAgent | COMMIT_PUSH | Centraliza headers/data reads via helpers | commit: dcacd2d | pr: 35
+2026-04-16T14:56:23Z | PR-MERGER(micaiasviola) | PR-MERGED | [WIP] Correções de lock e melhorias em pagamentos (2) | commit: 7a1337a820ef52e56de3c34bb58fef222c2d5d92 | pr: #36
