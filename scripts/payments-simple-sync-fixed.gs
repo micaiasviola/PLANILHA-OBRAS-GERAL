@@ -17,11 +17,11 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // ensure MÊS header exists
   const payLastCol = paySh.getLastColumn();
-  const payHeadersRow = payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : [];
+  const payHeadersRow = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : (payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : []);
   if (payHeadersRow.indexOf('MÊS') === -1) {
     paySh.getRange(1, Math.max(1, payLastCol) + 1).setValue('MÊS');
   }
-  const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
+  const payHeaders = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
 
   // header normalization helpers
   const payHeaderNorm = payHeaders.map(h => String(h||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,''));
@@ -38,7 +38,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // detect columns in FASE-OBRA
   const lastCol = obra.getLastColumn();
-  const headerRow = lastCol ? obra.getRange(1,1,1,lastCol).getValues()[0] : [];
+  const headerRow = getHeaderRow(obra);
   const normalize = txt => String(txt||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
   const normalized = headerRow.map(normalize);
 
@@ -102,12 +102,16 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const ini = (typeof obterLinhaInicialPorAba === 'function') ? obterLinhaInicialPorAba(obraName) : 3;
   const lastRow = obra.getLastRow();
   if (lastRow < ini) return { imported:0, reason: 'FASE-OBRA sem dados' };
-  const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
+  const obraData = (typeof getDataRows === 'function') ? getDataRows(obra, ini) : obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
 
   // read existing payments for dedupe
   const existingRowCount = Math.max(0, paySh.getLastRow() - 1);
   let existing = [];
-  if (existingRowCount > 0) existing = paySh.getRange(2, 1, existingRowCount, paySh.getLastColumn()).getValues();
+  if (existingRowCount > 0) {
+    // getDataRows helper exists in payments-utils.js — use it to avoid direct getRange with numeric literals
+    existing = getDataRows(paySh, 2);
+    if (existing.length > existingRowCount) existing = existing.slice(0, existingRowCount);
+  }
   const getCell = (arr, idx) => (Array.isArray(arr) && typeof idx === 'number' && idx >= 0 && idx < arr.length) ? arr[idx] : '';
 
   const _localParseCurrency = function(v){
@@ -172,10 +176,18 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const outMap = new Map();
   const months = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
+  // Mapear nomes de cabeçalho fornecidos pelo usuário para offsets (0-based) nas linhas de obra
+  const empHeaderName = 'EMPREENDIMENTO';
+  const uniHeaderName = 'UNID';
+  const empIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === empHeaderName.toUpperCase());
+  const uniIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === uniHeaderName.toUpperCase());
+  const empColOffset = (empIdx !== -1) ? empIdx : 0;
+  const uniColOffset = (uniIdx !== -1) ? uniIdx : 1;
+
   for (let r=0;r<obraData.length;r++) {
     const row = obraData[r];
-    const emp = (typeof row[0] !== 'undefined') ? row[0] : '';
-    const uni = (typeof row[1] !== 'undefined') ? row[1] : '';
+    const emp = (typeof row[empColOffset] !== 'undefined') ? row[empColOffset] : '';
+    const uni = (typeof row[uniColOffset] !== 'undefined') ? row[uniColOffset] : '';
     const sourceChaveVal = (typeof sourceChaveIdx === 'number' && sourceChaveIdx >= 0) ? row[sourceChaveIdx] : '';
     const sourcePrestadorVal = (typeof sourcePrestadorIdx === 'number' && sourcePrestadorIdx >= 0) ? row[sourcePrestadorIdx] : '';
 

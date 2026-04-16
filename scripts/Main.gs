@@ -24,8 +24,7 @@ function onOpen() {
   // Menu técnico (manutenção/admin).
   ui.createMenu("⚙️ Admin ECQUA")
     .addItem("☑️ Configurar coluna de envio (checkbox)", "configurarColunaEnvioFaseEntrega")
-    .addItem("⏰ Criar acionador fechamento diário (23h)", "criarAcionadorSincronizacaoFinalDoDia")
-    .addItem("🌙 Criar acionador sincronização completa (01h)", "configurarRotinaSincronizacaoMadrugada")
+    .addItem("⏰ Criar acionador diário central (01:00)", "criarTriggerDiarioCentralizado01h")
     .addItem("🔄 Forçar Atualização desta Aba (A->B)", "atualizarTodaAAbaAtiva")
     .addItem("💰 Recalcular Verba Teto (W -> X)", "recalcularTodasVerbasTetoFaseObra")
     .addItem("📆 Recalcular indicador de cronograma (OBRA E)", "sincronizarTodosIndicadoresCronogramaFaseObra")
@@ -72,7 +71,17 @@ function onEdit(e) {
     try {
       handlers[sheetName](e);
     } catch (err) {
-      SpreadsheetApp.getActiveSpreadsheet().toast("Erro na automação: " + err.message, "⚠️ Erro", 5);
+      // Suprimir toast visível quando o erro for de lock do documento — registrar em Logger apenas
+      try {
+        if (err && err.message && /Não foi possível obter lock do documento/.test(err.message)) {
+          Logger.log('Lock ocupado (suprimido toast): ' + err.message);
+        } else {
+          SpreadsheetApp.getActiveSpreadsheet().toast("Erro na automação: " + err.message, "⚠️ Erro", 5);
+        }
+      } catch (e) {
+        // Evita falha ao tentar mostrar toast em contextos sem UI
+        Logger.log('Falha ao exibir toast de erro: ' + (e && e.message));
+      }
       console.error(err);
     }
   }
@@ -103,25 +112,17 @@ function atualizarTodaAAbaAtiva() {
  * Cria (ou recria) o acionador que executa a sincronização completa às 1h da manhã.
  */
 function configurarRotinaSincronizacaoMadrugada() {
-  const HANDLER = "executarSincronizacaoGlobalMadrugada_";
-
-  // Remove acionadores anteriores com o mesmo handler para evitar duplicação
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === HANDLER)
-    .forEach(t => ScriptApp.deleteTrigger(t));
-
-  ScriptApp.newTrigger(HANDLER)
-    .timeBased()
-    .everyDays(1)
-    .atHour(1)       // 01:00 no fuso do projeto
-    .nearMinute(0)
-    .create();
-
-  SpreadsheetApp.getUi().alert(
-    "✅ Acionador de Sincronização Completa criado!\n" +
-    "Toda a planilha (Pedidos, Atrasos, Ocorrências e Informações Gerais)\n" +
-    "será atualizada automaticamente todos os dias às 01:00."
-  );
+  Logger.log('Deprecado: configurarRotinaSincronizacaoMadrugada() — use criarTriggerDiarioCentralizado01h().');
+  try {
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+    } else {
+      Logger.log('Função criarTriggerDiarioCentralizado01h não encontrada.');
+    }
+  } catch (e) {
+    try { SpreadsheetApp.getUi().alert('Erro ao criar trigger central: ' + (e && e.message)); } catch (er) {}
+    Logger.log('configurarRotinaSincronizacaoMadrugada erro: ' + (e && e.message));
+  }
 }
 
 /**
@@ -213,4 +214,86 @@ function recalcularTodasVerbasTetoFaseObra() {
 
   obra.getRange(ini, C.VERBA_TETO, numRows, 1).setValues(saida);
   ss.toast("✅ Verba teto recalculada para toda a FASE-OBRA.", "Automação", 5);
+}
+
+/**
+ * Lista os acionadores do projeto e retorna um array com detalhes básicos.
+ * Execute esta função no editor do Apps Script para ver os acionadores atuais.
+ */
+function listarAcionadoresProjeto() {
+  const triggers = ScriptApp.getProjectTriggers();
+  const detalhes = triggers.map(function(t) {
+    let info = {};
+    try { info.handler = t.getHandlerFunction(); } catch (e) { info.handler = null; }
+    try { info.eventType = t.getEventType ? String(t.getEventType()) : null; } catch (e) { info.eventType = null; }
+    try { info.triggerSource = t.getTriggerSource ? String(t.getTriggerSource()) : null; } catch (e) { info.triggerSource = null; }
+    try { info.sourceId = t.getTriggerSourceId ? String(t.getTriggerSourceId()) : null; } catch (e) { info.sourceId = null; }
+    return info;
+  });
+
+  try {
+    const ui = SpreadsheetApp.getUi();
+    if (detalhes.length === 0) {
+      ui.alert('Nenhum acionador encontrado neste projeto.');
+    } else {
+      let msg = 'Acionadores encontrados:\n';
+      detalhes.forEach(function(d, i) {
+        msg += (i+1) + '. Handler: ' + (d.handler || '-') + ' | EventType: ' + (d.eventType || '-') + ' | Source: ' + (d.triggerSource || '-') + '\n';
+      });
+      if (msg.length > 5000) {
+        Logger.log(msg);
+        ui.alert('Detalhes dos acionadores gravados em Logger. Veja o Log.');
+      } else {
+        ui.alert(msg);
+      }
+    }
+  } catch (e) {
+    Logger.log(JSON.stringify(detalhes, null, 2));
+  }
+
+  return detalhes;
+}
+
+/**
+ * Cria um acionador diário às 01:00 que executa `sincronizarTodosPedidosHousi`.
+ * Se já existir um acionador com o mesmo handler, nada é criado.
+ */
+/** Rotina centralizada que executa as tarefas diárias agrupadas às 01:00. */
+function executarRotinaDiariaCentralizada_() {
+  executarComDocumentLock_(function() {
+    try { executarSincronizacaoGlobalMadrugada_(); } catch (e) { console.error('central: executarSincronizacaoGlobalMadrugada_ erro: ' + (e && e.message)); }
+    try { autorunSincronizarStatusPagamentos(); } catch (e) { console.error('central: autorunSincronizarStatusPagamentos erro: ' + (e && e.message)); }
+    try { autorunGerarRelatorio(); } catch (e) { console.error('central: autorunGerarRelatorio erro: ' + (e && e.message)); }
+  }, 300000);
+}
+
+/** Recria um único acionador diário às 01:00 executando `executarRotinaDiariaCentralizada_`.
+ * Remove acionadores antigos relacionados antes de criar o novo.
+ */
+function criarTriggerDiarioCentralizado01h() {
+  const FN = 'executarRotinaDiariaCentralizada_';
+  const toRemove = [
+    'executarSincronizacaoFinalDoDia',
+    'executarSincronizacaoGlobalMadrugada_',
+    'executarAtualizarFaseObraDiaria',
+    'autorunGerarRelatorio',
+    'autorunSincronizarStatusPagamentos',
+    'sincronizarTodosPedidosHousi'
+  ];
+
+  const existing = ScriptApp.getProjectTriggers();
+  for (let i = 0; i < existing.length; i++) {
+    try {
+      const h = existing[i].getHandlerFunction && existing[i].getHandlerFunction();
+      if (h && (toRemove.indexOf(h) >= 0 || h === FN)) {
+        ScriptApp.deleteTrigger(existing[i]);
+        Logger.log('Trigger removido para handler: ' + h);
+      }
+    } catch (e) {}
+  }
+
+  ScriptApp.newTrigger(FN).timeBased().everyDays(1).atHour(1).nearMinute(0).create();
+  Logger.log('Acionador diário central criado para ' + FN + ' às 01:00.');
+  try { SpreadsheetApp.getUi().alert('Acionador diário central criado para 01:00.'); } catch (e) {}
+  return true;
 }

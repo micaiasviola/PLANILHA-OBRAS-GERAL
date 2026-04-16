@@ -67,3 +67,8 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 2026-04-10T22:29:09Z | PUSH_TO_MAIN | Merge pull request #33 from micaiasviola/feature/payments | commit: e3e9864cd003ffa2b1a0d9eb08e89c9d464232a2 | pusher: micaiasviola
 2026-04-13T14:02:00Z | PUSH_TO_MAIN | feat(payments): add importer for manual sheet and payments menu | commit: 486b1b3395dbe243ea91fa54898997518816624b | pusher: micaiasviola
 2026-04-15T14:32:51Z | PR-MERGER(micaiasviola) | PR-MERGED | Refatora lógica de pagamentos | commit: 165c5279c8d4ad35993ca07b993a5729dd6920a3 | pr: #34
+- 2026-04-15T15:17:59.061Z | CustomAgent | COMMIT_PUSH | Adiciona retry/backoff ao executarComDocumentLock_ para reduzir falhas de lock | commit: 85095ba 
+- 2026-04-15T17:50:27.688Z | CustomAgent | COMMIT_PUSH | Suprime toast de lock para erro de lock | commit: 3d38722 
+- 2026-04-16T14:06:17.100Z | CustomAgent | COMMIT_PUSH | auto | commit: 95475a6 
+- 2026-04-16T14:23:54.031Z | CustomAgent | COMMIT_PUSH | Atualiza lock e ajustes em pagamentos (substitui índices fixos) | commit: 3bbed27 | pr: 35
+- 2026-04-16T14:37:53.331Z | CustomAgent | COMMIT_PUSH | Centraliza headers/data reads via helpers | commit: dcacd2d | pr: 35

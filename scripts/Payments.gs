@@ -43,7 +43,7 @@ function criarAbaPagamentosSimples() {
     'PARCELA_NUM','TOTAL_SERVICO','VALOR','DATA_PREVISTA','DATA_PAGAMENTO','STATUS','FORMA_PAGAMENTO',
     'DOCUMENTO_LINK','OBS','CRIADO_POR','CRIADO_EM','ATUALIZADO_POR','ATUALIZADO_EM','MÊS'
   ];
-  sh.getRange(1,1,1,headers.length).setValues([headers]);
+  if (typeof setHeaderRow === 'function') setHeaderRow(sh, headers); else sh.getRange(1,1,1,headers.length).setValues([headers]);
   try { sh.setFrozenRows(1); } catch(e) {}
   return sh;
 }
@@ -92,7 +92,7 @@ function agregarResumoParaFaseObra(chave) {
     for (let i = 0; i < vals.length; i++) {
       if (String(vals[i][0]) === String(chave)) {
         const row = ini + i;
-        const headerRow = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
+        const headerRow = (typeof getHeaderRow === 'function') ? getHeaderRow(obra) : obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
         let paidColIdx = headerRow.indexOf('PAID_SUM');
         let pendingColIdx = headerRow.indexOf('PENDING_SUM');
         if (paidColIdx === -1 || pendingColIdx === -1) {
@@ -165,9 +165,6 @@ function criarMenuPagamentos() {
     const menu = ui.createMenu('💳 Pagamentos');
     menu.addItem('Gerar Relatório (Dry-run)', 'gerarRelatorioPagamentosDryRun');
     menu.addItem('Gerar Relatório (Executar)', 'gerarRelatorioPagamentosRun');
-    menu.addSeparator();
-    menu.addItem('Criar Trigger Relatório Diário', 'criarTriggerGerarRelatorioDiario');
-    menu.addItem('Remover Trigger Relatório', 'removerTriggerGerarRelatorio');
     menu.addToUi();
   } catch (e) {}
 }

@@ -26,20 +26,43 @@ let _lockAtivo_ = false;
  * Executa uma função com um lock de documento para evitar concorrência.
  * Reentrante: se já estiver dentro de um lock, executa diretamente.
  */
-function executarComDocumentLock_(callback, timeoutMs = 20000) {
+function executarComDocumentLock_(callback, timeoutMs = 20000, maxBackoffMs = 2000) {
   // Se já estamos dentro de um lock, executa direto (reentrância segura)
   if (_lockAtivo_) return callback();
 
   const lock = LockService.getDocumentLock();
-  if (!lock.tryLock(timeoutMs)) {
-    throw new Error("Não foi possível obter lock do documento. Tente novamente em instantes.");
+  const start = Date.now();
+  let attempt = 0;
+
+  // Tenta adquirir o lock com retry exponencial + jitter até timeoutMs
+  while (true) {
+    attempt++;
+    try {
+      // tentativa imediata não bloqueante
+      if (lock.tryLock(0)) break;
+    } catch (e) {
+      // Se tryLock lançar, loga e continua tentando até o timeout
+      console.error('executarComDocumentLock_ tryLock error: ' + e);
+    }
+
+    const elapsed = Date.now() - start;
+    if (elapsed >= timeoutMs) {
+      throw new Error("Não foi possível obter lock do documento. Tente novamente em instantes.");
+    }
+
+    // Backoff exponencial com jitter (em ms)
+    const base = Math.min(200 * Math.pow(2, attempt - 1), maxBackoffMs);
+    const jitter = Math.floor(Math.random() * 100);
+    const sleepMs = Math.max(50, Math.floor(base + jitter));
+    Utilities.sleep(sleepMs);
   }
+
   _lockAtivo_ = true;
   try {
     return callback();
   } finally {
     _lockAtivo_ = false;
-    lock.releaseLock();
+    try { lock.releaseLock(); } catch (e) { console.error('releaseLock failed: ' + e); }
   }
 }
 
@@ -502,12 +525,14 @@ function executarAtualizarFaseObraDiaria() {
 
 /** Cria um trigger diário (3:30) para atualizar a ordem da FASE-OBRA */
 function criarTriggerDiariaAtualizarFaseObra_() {
-  const fn = 'executarAtualizarFaseObraDiaria';
-  const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
-    const t = triggers[i];
-    if (t.getHandlerFunction() === fn) ScriptApp.deleteTrigger(t);
+  Logger.log('Deprecado: criarTriggerDiariaAtualizarFaseObra_() — encaminhando para acionador central (01:00).');
+  try {
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+    } else {
+      Logger.log('Função criarTriggerDiarioCentralizado01h não encontrada. Verifique a versão do código.');
+    }
+  } catch (e) {
+    Logger.log('Erro ao encaminhar criação de trigger central: ' + (e && e.message));
   }
-  ScriptApp.newTrigger(fn).timeBased().everyDays(1).atHour(3).nearMinute(30).create();
-  Logger.log('Trigger criada para ' + fn);
 }
