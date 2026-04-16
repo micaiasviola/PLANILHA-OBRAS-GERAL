@@ -17,11 +17,11 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // ensure MÊS header exists
   const payLastCol = paySh.getLastColumn();
-  const payHeadersRow = payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : [];
+  const payHeadersRow = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : (payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : []);
   if (payHeadersRow.indexOf('MÊS') === -1) {
     paySh.getRange(1, Math.max(1, payLastCol) + 1).setValue('MÊS');
   }
-  const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
+  const payHeaders = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
 
   // header normalization helpers
   const payHeaderNorm = payHeaders.map(h => String(h||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,''));
@@ -38,7 +38,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // detect columns in FASE-OBRA
   const lastCol = obra.getLastColumn();
-  const headerRow = (typeof getHeaderRow === 'function') ? getHeaderRow(obra) : (lastCol ? obra.getRange(1,1,1,lastCol).getValues()[0] : []);
+  const headerRow = getHeaderRow(obra);
   const normalize = txt => String(txt||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
   const normalized = headerRow.map(normalize);
 
@@ -102,12 +102,15 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const ini = (typeof obterLinhaInicialPorAba === 'function') ? obterLinhaInicialPorAba(obraName) : 3;
   const lastRow = obra.getLastRow();
   if (lastRow < ini) return { imported:0, reason: 'FASE-OBRA sem dados' };
-  const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
+  const obraData = (typeof getDataRows === 'function') ? getDataRows(obra, ini) : obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
 
   // read existing payments for dedupe
   const existingRowCount = Math.max(0, paySh.getLastRow() - 1);
   let existing = [];
-  if (existingRowCount > 0) existing = paySh.getRange(2, 1, existingRowCount, paySh.getLastColumn()).getValues();
+  if (existingRowCount > 0) {
+    existing = (typeof getDataRows === 'function') ? getDataRows(paySh, 2) : paySh.getRange(2, 1, existingRowCount, paySh.getLastColumn()).getValues();
+    if (existing.length > existingRowCount) existing = existing.slice(0, existingRowCount);
+  }
   const getCell = (arr, idx) => (Array.isArray(arr) && typeof idx === 'number' && idx >= 0 && idx < arr.length) ? arr[idx] : '';
 
   const _localParseCurrency = function(v){

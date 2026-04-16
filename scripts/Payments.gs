@@ -43,7 +43,7 @@ function criarAbaPagamentosSimples() {
     'PARCELA_NUM','TOTAL_SERVICO','VALOR','DATA_PREVISTA','DATA_PAGAMENTO','STATUS','FORMA_PAGAMENTO',
     'DOCUMENTO_LINK','OBS','CRIADO_POR','CRIADO_EM','ATUALIZADO_POR','ATUALIZADO_EM','MÊS'
   ];
-  sh.getRange(1,1,1,headers.length).setValues([headers]);
+  if (typeof setHeaderRow === 'function') setHeaderRow(sh, headers); else sh.getRange(1,1,1,headers.length).setValues([headers]);
   try { sh.setFrozenRows(1); } catch(e) {}
   return sh;
 }
