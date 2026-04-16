@@ -70,3 +70,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-15T15:17:59.061Z | CustomAgent | COMMIT_PUSH | Adiciona retry/backoff ao executarComDocumentLock_ para reduzir falhas de lock | commit: 85095ba 
 - 2026-04-15T17:50:27.688Z | CustomAgent | COMMIT_PUSH | Suprime toast de lock para erro de lock | commit: 3d38722 
 - 2026-04-16T14:06:17.100Z | CustomAgent | COMMIT_PUSH | auto | commit: 95475a6 
+- 2026-04-16T14:23:54.031Z | CustomAgent | COMMIT_PUSH | Atualiza lock e ajustes em pagamentos (substitui índices fixos) | commit: 3bbed27 | pr: 35
