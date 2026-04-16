@@ -26,8 +26,8 @@ jobs:
             npm install
           fi
       - name: Run tests (agent)
-        run: npm run agent -- test
+        run: node .github/agents/run-agent.js test
       - name: Find fixed column usages (agent)
-        run: npm run agent -- find-fixed-columns
+        run: node .github/agents/run-agent.js find-fixed-columns
       - name: Check AY/UUID usages (agent)
-        run: npm run agent -- check-ay
+        run: node .github/agents/run-agent.js check-ay
