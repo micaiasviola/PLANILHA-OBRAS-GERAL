@@ -525,12 +525,14 @@ function executarAtualizarFaseObraDiaria() {
 
 /** Cria um trigger diário (3:30) para atualizar a ordem da FASE-OBRA */
 function criarTriggerDiariaAtualizarFaseObra_() {
-  const fn = 'executarAtualizarFaseObraDiaria';
-  const triggers = ScriptApp.getProjectTriggers();
-  for (let i = 0; i < triggers.length; i++) {
-    const t = triggers[i];
-    if (t.getHandlerFunction() === fn) ScriptApp.deleteTrigger(t);
+  Logger.log('Deprecado: criarTriggerDiariaAtualizarFaseObra_() — encaminhando para acionador central (01:00).');
+  try {
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+    } else {
+      Logger.log('Função criarTriggerDiarioCentralizado01h não encontrada. Verifique a versão do código.');
+    }
+  } catch (e) {
+    Logger.log('Erro ao encaminhar criação de trigger central: ' + (e && e.message));
   }
-  ScriptApp.newTrigger(fn).timeBased().everyDays(1).atHour(3).nearMinute(30).create();
-  Logger.log('Trigger criada para ' + fn);
 }

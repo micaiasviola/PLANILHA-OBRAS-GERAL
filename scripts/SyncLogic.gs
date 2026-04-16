@@ -1127,20 +1127,17 @@ function sincronizarInformacoesGeraisDesdePreliminar_(exibirAlerta) {
  * Cria o acionador para sincronização final do dia às 23:00.
  */
 function criarAcionadorSincronizacaoFinalDoDia() {
-  const HANDLER = "executarSincronizacaoFinalDoDia";
-
-  ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === HANDLER)
-    .forEach(t => ScriptApp.deleteTrigger(t));
-
-  ScriptApp.newTrigger(HANDLER)
-    .timeBased()
-    .everyDays(1)
-    .atHour(23)
-    .nearMinute(0)
-    .create();
-
-  SpreadsheetApp.getUi().alert("✅ Acionador de fechamento diário (23:00) criado com sucesso!");
+  Logger.log('Deprecado: criarAcionadorSincronizacaoFinalDoDia() — encaminhando para acionador central (01:00).');
+  try {
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+      try { SpreadsheetApp.getUi().alert('Acionador central (01:00) criado/atualizado.'); } catch (e) {}
+    } else {
+      Logger.log('Função criarTriggerDiarioCentralizado01h não encontrada.');
+    }
+  } catch (e) {
+    Logger.log('Erro ao encaminhar criação de trigger central: ' + (e && e.message));
+  }
 }
 
 /**

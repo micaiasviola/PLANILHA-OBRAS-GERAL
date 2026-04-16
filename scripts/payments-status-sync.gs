@@ -136,22 +136,15 @@ function autorunSincronizarStatusPagamentos() {
 }
 
 function criarTriggerSincronizarStatusPagamentosDiario(hour) {
-  hour = (typeof hour === 'number' && hour >= 0 && hour <= 23) ? Math.floor(hour) : 1; // default 1h
-  // remove triggers existentes com mesmo handler para evitar duplicação
+  Logger.log('Deprecado: criarTriggerSincronizarStatusPagamentosDiario() — use criarTriggerDiarioCentralizado01h().');
   try {
-    const existing = ScriptApp.getProjectTriggers();
-    for (let i = 0; i < existing.length; i++) {
-      const t = existing[i];
-      if (t.getHandlerFunction && t.getHandlerFunction() === 'autorunSincronizarStatusPagamentos') {
-        ScriptApp.deleteTrigger(t);
-      }
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+      return { ok: true, forwarded: true };
     }
-    ScriptApp.newTrigger('autorunSincronizarStatusPagamentos').timeBased().everyDays(1).atHour(hour).create();
-    Logger.log('Trigger diário criado para autorunSincronizarStatusPagamentos @%sh', hour);
-    try { SpreadsheetApp.getUi().alert('Trigger criado: execução diária às ' + hour + 'h'); } catch (e) {}
-    return { ok: true, hour: hour };
+    return { ok: false, reason: 'criarTriggerDiarioCentralizado01h not found' };
   } catch (e) {
-    Logger.log('Erro ao criar trigger: %s', e && e.message);
+    Logger.log('Erro ao encaminhar criação de trigger central: %s', e && e.message);
     return { ok: false, reason: e && e.message };
   }
 }
@@ -192,21 +185,15 @@ function autorunGerarRelatorio() {
 }
 
 function criarTriggerGerarRelatorioDiario(hour) {
-  hour = (typeof hour === 'number' && hour >= 0 && hour <= 23) ? Math.floor(hour) : 2; // default 2h
+  Logger.log('Deprecado: criarTriggerGerarRelatorioDiario() — use criarTriggerDiarioCentralizado01h().');
   try {
-    const existing = ScriptApp.getProjectTriggers();
-    for (let i = 0; i < existing.length; i++) {
-      const t = existing[i];
-      if (t.getHandlerFunction && t.getHandlerFunction() === 'autorunGerarRelatorio') {
-        ScriptApp.deleteTrigger(t);
-      }
+    if (typeof criarTriggerDiarioCentralizado01h === 'function') {
+      criarTriggerDiarioCentralizado01h();
+      return { ok: true, forwarded: true };
     }
-    ScriptApp.newTrigger('autorunGerarRelatorio').timeBased().everyDays(1).atHour(hour).create();
-    Logger.log('Trigger diário criado para autorunGerarRelatorio @%sh', hour);
-    try { SpreadsheetApp.getUi().alert('Trigger criado: gerar-relatório diário às ' + hour + 'h'); } catch (e) {}
-    return { ok: true, hour: hour };
+    return { ok: false, reason: 'criarTriggerDiarioCentralizado01h not found' };
   } catch (e) {
-    Logger.log('Erro ao criar trigger gerar-relatorio: %s', e && e.message);
+    Logger.log('Erro ao encaminhar criação de trigger central: %s', e && e.message);
     return { ok: false, reason: e && e.message };
   }
 }

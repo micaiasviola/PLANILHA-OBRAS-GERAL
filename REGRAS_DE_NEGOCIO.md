@@ -99,22 +99,53 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 - Ajustes em scripts/Config.gs: novos HEADERS_COLS e fallbacks para suportar resolução dinâmica de colunas sem depender de índices numéricos.
 - CI: Agent Guard workflow (.github/workflows/agent-guard.yml) agora fornece check run 'agent-checks'. Proteção de branch deve exigir esse contexto para desobstruir merges.
 
-Detalhes e passo a passo para ativar o trigger diário
-- Função que cria o gatilho: criarTriggerDiariaAtualizarFaseObra_()
-- Horário recomendado: 03:30 (padrão do projeto). A função agendará uma execução diária que chama executarAtualizarFaseObraDiaria().
-- Observação importante: Triggers são específicas do projeto Apps Script e só podem ser criadas pela conta do Google que tem permissão no projeto. Para ativar manualmente:
-  1. Abra a planilha no Google Sheets → Extensões → Apps Script.
-  2. No editor do Apps Script, no painel esquerdo, selecione a função criarTriggerDiariaAtualizarFaseObra_ e clique em Executar (Run).
-  3. Conceda as autorizações solicitadas (OAuth) se for a primeira vez.
-  4. No editor, abra o painel "Triggers" (ícone de relógio) e confirme que existe um gatilho do tipo "Time-driven" configurado para rodar diariamente às 03:30.
+
+Detalhes e passo a passo para ativar o **Acionador Diário Centralizado (01:00)**
+
+- Função que cria o gatilho: `criarTriggerDiarioCentralizado01h()`
+- Função executada pelo acionador: `executarRotinaDiariaCentralizada_()`
+- Horário padrão: 01:00 (fuso do projeto). O acionador é `time-driven` e roda diariamente às 01:00.
+
+- O que o acionador faz (resumo operacional):
+    - Executa em sequência, com lock e tolerância a falhas, as rotinas importantes de sincronização e relatório:
+        1. `executarSincronizacaoGlobalMadrugada_()` — sincronização completa (push/pull entre FASE-OBRA, PEDIDOS, PRELIMINAR e INFO_GERAIS).
+        2. `autorunSincronizarStatusPagamentos()` — atualiza STATUS em `PAGAMENTOS` a partir de `FASE-OBRA` (marcas PAGO).
+        3. `autorunGerarRelatorio()` — gera/atualiza o relatório de `PAGAMENTOS` (chama `gerarRelatorioPagamentos`).
+    - Cada item é protegido por `try/catch`; se uma subtarefa falhar, a próxima ainda será executada.
+    - A execução é envolvida em `executarComDocumentLock_` para reduzir condições de corrida.
+
+- Comportamento de limpeza de triggers:
+    - Ao criar o acionador central, a função `criarTriggerDiarioCentralizado01h()` remove automaticamente triggers antigos relacionados para evitar duplicação. Handlers removidos incluem (lista não-exaustiva):
+        - `executarSincronizacaoFinalDoDia`
+        - `executarSincronizacaoGlobalMadrugada_`
+        - `executarAtualizarFaseObraDiaria`
+        - `autorunGerarRelatorio`
+        - `autorunSincronizarStatusPagamentos`
+        - `sincronizarTodosPedidosHousi`
+
+- Garantias e observações operacionais:
+    - Escritas em lote preservam a coluna técnica `CHAVE` usando `setValuesPreservandoColunaChave_`.
+    - O lock reduz concorrência, porém recomenda-se não agendar outras tarefas pesadas no mesmo minuto (01:00) para evitar disputas de recursos.
+    - Limite de tempo: se a rotina exceder o tempo máximo de execução do Apps Script (situação rara, dependendo do volume de dados), migre subtarefas pesadas para jobs menores ou escalone horários.
+
+- Como ativar manualmente (passo a passo):
+    1. Abra a planilha no Google Sheets → Extensões → Apps Script.
+    2. No editor do Apps Script, selecione a função `criarTriggerDiarioCentralizado01h` e clique em Executar (Run).
+    3. Conceda as permissões OAuth solicitadas (se necessário).
+    4. No editor, abra o painel "Triggers" e confirme que existe um trigger `Time-driven` configurado para rodar diariamente às 01:00, com handler `executarRotinaDiariaCentralizada_`.
+
+- Testes pós-ativação recomendados:
+    - Execute `executarRotinaDiariaCentralizada_()` manualmente e verifique os logs para cada subtarefa.
+    - Chame `listarAcionadoresProjeto()` para confirmar que o acionador central está ativo e que triggers antigos foram removidos.
+    - Valide que relatórios, sincronizações e atualizações de status ocorreram conforme esperado e que a coluna `CHAVE` foi preservada.
 
 Automatização (opcional)
-- Para criar triggers programaticamente (CI), usar a Apps Script API com credenciais de serviço ou usar clasp + uma conta que tenha permissões. Esse fluxo requer deploy e permissões administrativas e não é executado automaticamente ao fazer merge.
+- Para criar triggers programaticamente (CI), usar a Apps Script API com credenciais de serviço ou usar `clasp` com uma conta que tenha permissões. Esse fluxo requer deploy e permissões administrativas e não é executado automaticamente ao fazer merge.
 
 Ações necessárias após merge
-- Com a branch mesclada, execute criarTriggerDiariaAtualizarFaseObra_() no editor do Apps Script com a conta de deploy para ativar o gatilho.
-- Testar em uma cópia de staging: fazer backup, executar executarAtualizarFaseObraDiaria() manualmente e verificar se a ordem da aba FASE-OBRA corresponde à ordem de INFORMAÇÕES GERAIS.
-- Conferir logs e validar que UUIDs (coluna AY) foram preservadas.
+- Com a branch mesclada, execute `criarTriggerDiarioCentralizado01h()` no editor do Apps Script com a conta de deploy para ativar o acionador central.
+- Testar em uma cópia de staging: fazer backup, executar `executarRotinaDiariaCentralizada_()` manualmente e verificar os logs; confirmar que `PEDIDOS-GERAL` e `PAGAMENTOS` foram atualizados conforme esperado.
+- Conferir logs e validar que UUIDs (coluna AY) foram preservadas; verificar se triggers antigos foram removidos (use `listarAcionadoresProjeto()`).
 
 Notas sobre CI/Proteção de branch
 - O check run do Agent Guard é chamado "agent-checks". Garanta que a regra de proteção do branch principal (main) exige esse contexto para liberar merges.

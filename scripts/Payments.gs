@@ -165,9 +165,6 @@ function criarMenuPagamentos() {
     const menu = ui.createMenu('💳 Pagamentos');
     menu.addItem('Gerar Relatório (Dry-run)', 'gerarRelatorioPagamentosDryRun');
     menu.addItem('Gerar Relatório (Executar)', 'gerarRelatorioPagamentosRun');
-    menu.addSeparator();
-    menu.addItem('Criar Trigger Relatório Diário', 'criarTriggerGerarRelatorioDiario');
-    menu.addItem('Remover Trigger Relatório', 'removerTriggerGerarRelatorio');
     menu.addToUi();
   } catch (e) {}
 }
