@@ -410,3 +410,6 @@ function testarPagamentos() {
     Logger.log('ERROR: ' + e.message);
   }
 }
+function testarSincronizarStatusPagamentosDryRun() {
+  return sincronizarStatusPagamentosFromFaseObra(true);
+}

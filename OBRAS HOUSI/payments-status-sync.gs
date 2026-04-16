@@ -123,10 +123,6 @@ function sincronizarStatusPagamentosFromFaseObra(dryRun) {
   return { updated: changed.length, details: changed };
 }
 
-function testarSincronizarStatusPagamentosDryRun() {
-  return sincronizarStatusPagamentosFromFaseObra(true);
-}
-
 function autorunSincronizarStatusPagamentos() {
   try {
     sincronizarStatusPagamentosFromFaseObra(false);
@@ -217,4 +213,5 @@ function removerTriggerGerarRelatorio() {
     return { removed: removed, reason: e && e.message };
   }
 }
+
 
