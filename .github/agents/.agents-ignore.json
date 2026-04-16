@@ -1,0 +1,11 @@
+{
+  "files": [
+    "OBRAS HOUSI/Tests.gs",
+    "OBRAS HOUSI/append-agent-log.js",
+    "AGENT-LOGS.md"
+  ],
+  "patterns": [
+    "getRange\\(\\s*1\\s*,",
+    "getRange\\(\\s*1\\s*,\\s*1\\s*\\)"
+  ]
+}

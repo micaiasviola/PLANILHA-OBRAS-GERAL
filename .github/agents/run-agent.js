@@ -27,6 +27,16 @@ function listGsFiles(dir) {
 function findFixedColumns() {
   console.log('-> Delegando para .github/agents/column-mapper.js (se disponível) para relatório detalhado...');
   const mapper = path.join(__dirname, 'column-mapper.js');
+  const IGNORE_PATH = path.join(__dirname, '.agents-ignore.json');
+  function loadIgnore() {
+    if (!fs.existsSync(IGNORE_PATH)) return { files: [], patterns: [] };
+    try {
+      const j = JSON.parse(fs.readFileSync(IGNORE_PATH, 'utf8'));
+      return { files: Array.isArray(j.files) ? j.files : [], patterns: Array.isArray(j.patterns) ? j.patterns.map(p => new RegExp(p)) : [] };
+    } catch (e) { console.error('Failed to parse ignore file:', e && e.message); return { files: [], patterns: [] }; }
+  }
+  const ignore = loadIgnore();
+
   if (fs.existsSync(mapper)) {
     const res = spawnSync('node', [mapper], { cwd, stdio: 'inherit', shell: true });
     if (res.error) {
@@ -37,11 +47,13 @@ function findFixedColumns() {
   }
 
   // Fallback: comportamento anterior caso column-mapper.js não exista
-  console.log('column-mapper.js não encontrado; usando scanner interno...');
+  console.log('column-mapper.js não encontrado; usando scanner interno (com ignore list)...');
   const files = listGsFiles(cwd);
   const regex = /getRange\(\s*(\d+)\s*,\s*(\d+)/g;
   let found = 0;
   for (const f of files) {
+    const rel = path.relative(cwd, f);
+    if (ignore.files && ignore.files.includes(rel)) continue;
     const txt = fs.readFileSync(f, 'utf8');
     const matchesList = [];
     let m;
@@ -49,10 +61,13 @@ function findFixedColumns() {
       const rowNum = Number(m[1]);
       // Ignorar leituras de cabeçalho que começam na linha 1 (getHeaderRow)
       if (rowNum <= 1) continue;
-      matchesList.push(m[0]);
+      const snippet = m[0];
+      const skip = (ignore.patterns || []).some(rx => rx.test(snippet) || rx.test(txt) || rx.test(rel));
+      if (skip) continue;
+      matchesList.push(snippet);
     }
     if (matchesList.length) {
-      console.log(`  * ${path.relative(cwd, f)} -> ${matchesList.length} ocorrência(s)`);
+      console.log(`  * ${rel} -> ${matchesList.length} ocorrência(s)`);
       found += matchesList.length;
     }
   }

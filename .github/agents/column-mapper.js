@@ -9,7 +9,25 @@ const lib = require('./lib');
 const repoRoot = lib.repoRoot;
 function listFiles(dir) { return lib.listFiles(dir); }
 
-function scanFile(filePath) {
+const IGNORE_PATH = path.join(__dirname, '.agents-ignore.json');
+function loadIgnore() {
+  if (!fs.existsSync(IGNORE_PATH)) return { files: [], patterns: [] };
+  try {
+    const j = JSON.parse(fs.readFileSync(IGNORE_PATH, 'utf8'));
+    return {
+      files: Array.isArray(j.files) ? j.files : [],
+      patterns: Array.isArray(j.patterns) ? j.patterns.map(p => new RegExp(p)) : []
+    };
+  } catch (e) {
+    console.error('Failed to parse ignore file:', e && e.message);
+    return { files: [], patterns: [] };
+  }
+}
+
+function scanFile(filePath, ignore) {
+  const rel = path.relative(repoRoot, filePath);
+  if (ignore.files && ignore.files.includes(rel)) return [];
+
   const txt = fs.readFileSync(filePath, 'utf8');
   const lines = txt.split(/\r?\n/);
   const findings = [];
@@ -25,6 +43,8 @@ function scanFile(filePath) {
     const line = lines[i];
     for (const p of patterns) {
       if (p.re.test(line)) {
+        const skip = (ignore.patterns || []).some(rx => rx.test(line));
+        if (skip) continue;
         findings.push({ line: i+1, text: line.trim(), pattern: p.name });
       }
     }
@@ -42,13 +62,15 @@ function suggestHeaderName(file, lineText) {
 }
 
 function run() {
-  console.log('Scanning repository for numeric column index usages...');
+  console.log('Scanning repository for numeric column index usages (column-mapper)...');
   const files = listFiles(repoRoot);
   const report = [];
+  const ignore = loadIgnore();
+
   for (const f of files) {
     const rel = path.relative(repoRoot, f);
     try {
-      const findings = scanFile(f);
+      const findings = scanFile(f, ignore);
       if (findings.length) {
         for (const fin of findings) {
           report.push({ file: rel, line: fin.line, code: fin.text, pattern: fin.pattern, suggestion: suggestHeaderName(rel, fin.text) });
