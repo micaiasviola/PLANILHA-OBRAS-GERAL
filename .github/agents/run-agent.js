@@ -34,7 +34,19 @@ function listGsFiles(dir) {
 }
 
 function findFixedColumns() {
-  console.log('-> Procurando usos de índices numéricos de coluna em arquivos .gs/.js/.html (ignorando leituras de cabeçalho em linha 1)...');
+  console.log('-> Delegando para .github/agents/column-mapper.js (se disponível) para relatório detalhado...');
+  const mapper = path.join(__dirname, 'column-mapper.js');
+  if (fs.existsSync(mapper)) {
+    const res = spawnSync('node', [mapper], { cwd, stdio: 'inherit', shell: true });
+    if (res.error) {
+      console.error('Erro ao executar column-mapper:', res.error.message);
+      process.exit(1);
+    }
+    process.exit(res.status || 0);
+  }
+
+  // Fallback: comportamento anterior caso column-mapper.js não exista
+  console.log('column-mapper.js não encontrado; usando scanner interno...');
   const files = listGsFiles(cwd);
   const regex = /getRange\(\s*(\d+)\s*,\s*(\d+)/g;
   let found = 0;
