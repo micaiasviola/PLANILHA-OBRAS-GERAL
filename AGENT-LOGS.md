@@ -79,3 +79,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 2026-04-16T18:48:41Z | PUSH_TO_MAIN | Update agent-log path after reorganizing scripts into 'OBRAS HOUSI' | commit: 92fd1cf2f367c10ae2dfc0cd0f00e70ca1077e6d | pusher: micaiasviola
 2026-04-16T18:55:54Z | PUSH_TO_MAIN | Centralizar testes: mover testarPagamentos para Tests.gs e remover payments-tests.gs | commit: 473720a775f2446ac23d3461234fd7cb4b510869 | pusher: micaiasviola
 - 2026-04-16T18:58:27.967Z | CustomAgent | COMMIT_PUSH | Centralized tests: moved testarSincronizarStatusPagamentosDryRun | commit: faea700 
+2026-04-16T18:58:34Z | PUSH_TO_MAIN | Centralizar testes: mover testarSincronizarStatusPagamentosDryRun para Tests.gs e remover duplicata | commit: faea70073f6d2191971c35ef8b2502d844e83b34 | pusher: micaiasviola
