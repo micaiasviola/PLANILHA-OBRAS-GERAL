@@ -81,3 +81,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-16T18:58:27.967Z | CustomAgent | COMMIT_PUSH | Centralized tests: moved testarSincronizarStatusPagamentosDryRun | commit: faea700 
 2026-04-16T18:58:34Z | PUSH_TO_MAIN | Centralizar testes: mover testarSincronizarStatusPagamentosDryRun para Tests.gs e remover duplicata | commit: faea70073f6d2191971c35ef8b2502d844e83b34 | pusher: micaiasviola
 2026-04-16T18:58:36Z | PUSH_TO_MAIN | agent-log: 2026-04-16T18:58:27.967Z COMMIT_PUSH | commit: 91d1b4a6447280aa5a361a370abb30fffbb849b7 | pusher: micaiasviola
+2026-04-16T19:03:50Z | PUSH_TO_MAIN | Unifica agents: delegar find-fixed-columns para column-mapper.js quando disponível\n\nCo-authored-by: Copilot <223556219+Copilot@users.noreply.github.com> | commit: e316f4dc3551ed4ecea1cd4ed6c29dde19385bad | pusher: micaiasviola
