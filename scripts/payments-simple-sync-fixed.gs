@@ -108,7 +108,8 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const existingRowCount = Math.max(0, paySh.getLastRow() - 1);
   let existing = [];
   if (existingRowCount > 0) {
-    existing = (typeof getDataRows === 'function') ? getDataRows(paySh, 2) : paySh.getRange(2, 1, existingRowCount, paySh.getLastColumn()).getValues();
+    // getDataRows helper exists in payments-utils.js — use it to avoid direct getRange with numeric literals
+    existing = getDataRows(paySh, 2);
     if (existing.length > existingRowCount) existing = existing.slice(0, existingRowCount);
   }
   const getCell = (arr, idx) => (Array.isArray(arr) && typeof idx === 'number' && idx >= 0 && idx < arr.length) ? arr[idx] : '';
