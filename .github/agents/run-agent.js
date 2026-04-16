@@ -34,16 +34,23 @@ function listGsFiles(dir) {
 }
 
 function findFixedColumns() {
-  console.log('-> Procurando usos de índices numéricos de coluna em arquivos .gs/.js/.html...');
+  console.log('-> Procurando usos de índices numéricos de coluna em arquivos .gs/.js/.html (ignorando leituras de cabeçalho em linha 1)...');
   const files = listGsFiles(cwd);
-  const regex = /getRange\(\s*\d+\s*,\s*\d+/g;
+  const regex = /getRange\(\s*(\d+)\s*,\s*(\d+)/g;
   let found = 0;
   for (const f of files) {
     const txt = fs.readFileSync(f, 'utf8');
-    const matches = txt.match(regex);
-    if (matches && matches.length) {
-      console.log(`  * ${path.relative(cwd, f)} -> ${matches.length} ocorrência(s)`);
-      found += matches.length;
+    const matchesList = [];
+    let m;
+    while ((m = regex.exec(txt)) !== null) {
+      const rowNum = Number(m[1]);
+      // Ignorar leituras de cabeçalho que começam na linha 1 (getHeaderRow)
+      if (rowNum <= 1) continue;
+      matchesList.push(m[0]);
+    }
+    if (matchesList.length) {
+      console.log(`  * ${path.relative(cwd, f)} -> ${matchesList.length} ocorrência(s)`);
+      found += matchesList.length;
     }
   }
   if (!found) console.log('  Nenhum uso óbvio encontrado.');
