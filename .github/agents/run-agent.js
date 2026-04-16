@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path');
-const { spawnSync } = require('child_process');
+const lib = require('./lib');
+const { spawnSync } = lib;
 
-const repoRoot = path.resolve(__dirname, '..', '..');
-const cwd = repoRoot;
+const repoRoot = lib.repoRoot;
+const cwd = lib.cwd;
 const args = process.argv.slice(2);
 const cmd = args[0] || 'help';
 
@@ -18,19 +19,9 @@ function runTests() {
   process.exit(res.status || 0);
 }
 
+// use lib.listFiles for code files
 function listGsFiles(dir) {
-  const out = [];
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const e of entries) {
-    const full = path.join(dir, e.name);
-    if (e.isDirectory()) {
-      if (['node_modules', '.git'].includes(e.name)) continue;
-      out.push(...listGsFiles(full));
-    } else {
-      if (full.endsWith('.gs') || full.endsWith('.js') || full.endsWith('.html')) out.push(full);
-    }
-  }
-  return out;
+  return lib.listFiles(dir);
 }
 
 function findFixedColumns() {
