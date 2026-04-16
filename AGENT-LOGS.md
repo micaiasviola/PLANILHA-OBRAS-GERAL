@@ -74,3 +74,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-16T14:37:53.331Z | CustomAgent | COMMIT_PUSH | Centraliza headers/data reads via helpers | commit: dcacd2d | pr: 35
 2026-04-16T14:56:16Z | PUSH_TO_MAIN | Merge pull request #36 from micaiasviola/fix/document-lock-2 | commit: 7a1337a820ef52e56de3c34bb58fef222c2d5d92 | pusher: micaiasviola
 2026-04-16T14:56:20Z | PR-MERGER(micaiasviola) | PR-MERGED | Corrige lock de documento e ajustes em pagamentos | commit: 7a1337a820ef52e56de3c34bb58fef222c2d5d92 | pr: #35
+- 2026-04-16T18:45:36.440Z | LocalAgent | COMMIT_PUSH | Reorganiza repo: MOVE scripts -> OBRAS HOUSI; remove BACKUP | commit: 927e8fd | pr: 36
