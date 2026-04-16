@@ -38,7 +38,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // detect columns in FASE-OBRA
   const lastCol = obra.getLastColumn();
-  const headerRow = lastCol ? obra.getRange(1,1,1,lastCol).getValues()[0] : [];
+  const headerRow = (typeof getHeaderRow === 'function') ? getHeaderRow(obra) : (lastCol ? obra.getRange(1,1,1,lastCol).getValues()[0] : []);
   const normalize = txt => String(txt||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
   const normalized = headerRow.map(normalize);
 

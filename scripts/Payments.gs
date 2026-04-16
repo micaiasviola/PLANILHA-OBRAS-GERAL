@@ -92,7 +92,7 @@ function agregarResumoParaFaseObra(chave) {
     for (let i = 0; i < vals.length; i++) {
       if (String(vals[i][0]) === String(chave)) {
         const row = ini + i;
-        const headerRow = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
+        const headerRow = (typeof getHeaderRow === 'function') ? getHeaderRow(obra) : obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
         let paidColIdx = headerRow.indexOf('PAID_SUM');
         let pendingColIdx = headerRow.indexOf('PENDING_SUM');
         if (paidColIdx === -1 || pendingColIdx === -1) {
