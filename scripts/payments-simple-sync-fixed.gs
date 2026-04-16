@@ -172,10 +172,18 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const outMap = new Map();
   const months = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
 
+  // Mapear nomes de cabeçalho fornecidos pelo usuário para offsets (0-based) nas linhas de obra
+  const empHeaderName = 'EMPREENDIMENTO';
+  const uniHeaderName = 'UNID';
+  const empIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === empHeaderName.toUpperCase());
+  const uniIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === uniHeaderName.toUpperCase());
+  const empColOffset = (empIdx !== -1) ? empIdx : 0;
+  const uniColOffset = (uniIdx !== -1) ? uniIdx : 1;
+
   for (let r=0;r<obraData.length;r++) {
     const row = obraData[r];
-    const emp = (typeof row[0] !== 'undefined') ? row[0] : '';
-    const uni = (typeof row[1] !== 'undefined') ? row[1] : '';
+    const emp = (typeof row[empColOffset] !== 'undefined') ? row[empColOffset] : '';
+    const uni = (typeof row[uniColOffset] !== 'undefined') ? row[uniColOffset] : '';
     const sourceChaveVal = (typeof sourceChaveIdx === 'number' && sourceChaveIdx >= 0) ? row[sourceChaveIdx] : '';
     const sourcePrestadorVal = (typeof sourcePrestadorIdx === 'number' && sourcePrestadorIdx >= 0) ? row[sourcePrestadorIdx] : '';
 
