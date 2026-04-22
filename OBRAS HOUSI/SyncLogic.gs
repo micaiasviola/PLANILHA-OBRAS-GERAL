@@ -384,9 +384,14 @@ function processarIntervaloAparaB_(aba, intervalo) {
   const colEmp = intervalo.getColumn();
   const colUni = colEmp + 1;
 
-  // REQUISITO: Apenas na aba INFORMAÇÕES GERAIS deve existir o menu suspenso de unidades.
-  // Nas outras abas, limpamos qualquer validação para manter apenas o texto copiado.
-  if (nomeAba !== CONFIG.SHEETS.INFO_GERAIS) {
+  // Menus de unidade por empreendimento habilitados por aba.
+  // Nas demais abas, mantemos apenas texto (sem validação) para reduzir custo de recálculo.
+  const abasComDropdownUnidade = new Set([
+    CONFIG.SHEETS.INFO_GERAIS,
+    CONFIG.SHEETS.OCORRENCIAS
+  ]);
+
+  if (!abasComDropdownUnidade.has(nomeAba)) {
     aba.getRange(rowStart, colUni, numRows, 1).clearDataValidations();
     return;
   }
