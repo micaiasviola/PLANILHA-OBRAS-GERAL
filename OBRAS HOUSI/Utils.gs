@@ -13,6 +13,7 @@ function obterLinhaInicialPorAba(nomeAba) {
   if (nomeAba === S.PEDIDOS) return 2;
   if (nomeAba === S.OCORRENCIAS) return 3;
   if (nomeAba === S.INFO_GERAIS) return 4;
+  if (nomeAba === S.DASHBOARD) return 2;
   return 2;
 }
 

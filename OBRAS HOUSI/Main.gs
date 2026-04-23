@@ -15,6 +15,7 @@ function onOpen() {
     .addItem("🚀 Gerar/Atualizar PEDIDOS-GERAL (HOUSI)", "sincronizarTodosPedidosHousi")
     .addItem("🚚 Sincronizar envios para FASE-ENTREGA", "sincronizarTodosEnviosParaFaseEntrega")
     .addItem("⏰ Atualizar Indicador de Atrasos (INFO. GERAIS)", "atualizarIndicadorServicosAtrasados")
+    .addItem("📋 Atualizar PENDÊNCIAS GERAIS (DASHBOARD)", "atualizarPendenciasGeraisDashboard")
     .addItem("📑 Ordenar Fase-Preliminar (Base INFO. GERAIS)", "ordenarPreliminarIgualInformacoesGerais")
     .addItem("🔄 Atualizar TODAS AS PENDÊNCIAS (Sinc. Global)", "sincronizacaoManualGlobal")
     .addItem("⏯️ Reordenar FASE-OBRA (Manual)", "executarAtualizarFaseObraDiaria")
@@ -94,6 +95,7 @@ function sincronizacaoManualGlobal() {
   SpreadsheetApp.getUi().alert("Iniciando a Sincronização Global. Por favor, aguarde...");
   executarSincronizacaoFinalDoDia();
   recalcularServicosAtrasados_();
+  atualizarPendenciasGeraisDashboard();
   SpreadsheetApp.getUi().alert("Pronto! Sincronização Global Concluída.");
 }
 
@@ -264,6 +266,7 @@ function executarRotinaDiariaCentralizada_() {
     try { executarSincronizacaoGlobalMadrugada_(); } catch (e) { console.error('central: executarSincronizacaoGlobalMadrugada_ erro: ' + (e && e.message)); }
     try { autorunSincronizarStatusPagamentos(); } catch (e) { console.error('central: autorunSincronizarStatusPagamentos erro: ' + (e && e.message)); }
     try { autorunGerarRelatorio(); } catch (e) { console.error('central: autorunGerarRelatorio erro: ' + (e && e.message)); }
+    try { atualizarPendenciasGeraisDashboard(); } catch (e) { console.error('central: atualizarPendenciasGeraisDashboard erro: ' + (e && e.message)); }
   }, 300000);
 }
 

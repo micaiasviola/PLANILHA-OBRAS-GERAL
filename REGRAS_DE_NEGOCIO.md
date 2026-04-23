@@ -41,7 +41,10 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 *   **Papel**: Listar TUDO de forma macro. Onde o usuário cria Novas Linhas no Topo (via Menu Automático) para introduzir uma nova unidade no pipeline.
 *   **Sincronização**: Os resumos de PENDÊNCIAS, ATRASOS, OCORRÊNCIAS aparecem aqui automaticamente, calculados por triggers Noturnos (23:00 e 01:00 AM) baseados no andamento da `FASE-OBRA`.
 *   **Status da Unidade**: Possui uma coluna de **"STATUS OBRA"** (ATIVA/FINALIZADA) calculada automaticamente com base no status da `FASE-ENTREGA`. Unidades FINALIZADAS são ignoradas em filtros de obras ativas.
-*   **Dropdowns Mestre**: Esta é a **única aba** que consome a lista de Unidades cadastradas da "Aba Base Backup" criando regras de validação `DataValidation`. As outras abas **herdam o formato como texto livre** para evitar re-calculos massivos na API e travamentos do Google Sheets.
+*   **Dropdowns Mestre**: A lista de unidades por empreendimento é derivada da "Aba Base Backup" com validação `DataValidation`.
+    *   Em **INFORMAÇÕES GERAIS** o dropdown é aplicado como base operacional principal.
+    *   Em **OCORRÊNCIAS** também há aplicação automática de Unidade por Empreendimento no fluxo de edição (A -> B).
+    *   Nas demais abas, prevalece o modelo de texto para reduzir custo de recálculo e travamentos.
 
 ### 4.2. FASE-PRELIMINAR (Vistoria Inicial)
 *   **Papel**: Checklist de check-in (vistoria preliminar) e pendências construtivas. Onde são avaliadas as condições do imóvel e definidos o *Responsável Operacional (OPR)* e *Administrativo (ADM)*.
@@ -75,6 +78,35 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 *   **Papel**: Vistoria final e revisão antes do fechamento total.
 *   **Calculo de Vistorias**: Possui diversas colunas de Revisão e Vistoria parecidas com ocorrências, cujo status Geral Consolida a média do "Melhor Pior Caso". Se tem algo negado, prende o Status Geral.
 
+### 4.7. DASHBOARD (Pendências Gerais)
+*   **Papel**: Consolidação gerencial por Unidade (EMP + UNID), com base em INFORMAÇÕES GERAIS e FASE-OBRA, preparando evolução futura para painel.
+*   **Estrutura de colunas**:
+    *   A `EMPREENDIMENTO`
+    *   B `UNID`
+    *   C `SEMANA CRONOGRAMA`
+    *   D `SERVIÇOS CONCLUIDOS`
+    *   E `SERVIÇOS PENDENTES`
+    *   F `VERBA UTILIZADA`
+    *   G `PGTOS PENDENTES`
+    *   H `ALERTA`
+*   **Fonte dos dados**:
+    *   A/B vêm de **INFORMAÇÕES GERAIS** (unidades únicas, preservando ordem).
+    *   C é calculada por **DATA LOTE** da INFORMAÇÕES GERAIS (sem depender da coluna de semana da FASE-OBRA).
+    *   D/E/F/G vêm de agregações da **FASE-OBRA** por unidade.
+*   **Regras de cálculo**:
+    *   `SEMANA CRONOGRAMA` = semana atual desde DATA LOTE, exibida no formato `ºS{n}`.
+    *   `SERVIÇOS CONCLUIDOS` = contagem de serviços com status de aprovação 100% aprovado.
+    *   `SERVIÇOS PENDENTES` = contagem de serviços exceto 100% aprovado e cancelado.
+    *   `VERBA UTILIZADA` = soma dos valores de parcelas cujo STATUS n PAG = `PAGO` (n de 1 a 5).
+    *   `PGTOS PENDENTES` = soma dos valores de parcelas com STATUS n PAG preenchido e diferente de `PAGO`.
+    *   `ALERTA` = exibido quando houver serviço pendente ou pagamento pendente na unidade.
+*   **Higiene visual**: valores numéricos iguais a zero não são escritos (célula fica vazia).
+*   **Execução**:
+    *   Função principal: `atualizarPendenciasGeraisDashboard()` em `Dashboard.gs`.
+    *   Disponível no menu Automação (`📋 Atualizar PENDÊNCIAS GERAIS (DASHBOARD)`).
+    *   Incluída no acionador diário centralizado das 01:00.
+    *   Incluída em `sincronizacaoManualGlobal()`.
+
 ---
 
 ## ⚡ 5. Regras de Ouro e Dicas para o Backend App Script
@@ -86,17 +118,26 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
     2. Ir em `Config.gs` -> `CONFIG.HEADERS_COLS`.
     3. Adicionar uma nova linha com a Chave (Nome Backend) Mapeada ao Valor (CABEÇALHO FRONTEND). E ajustar as constantes default de FALLBACK (para criar compatibilidade regressiva).
     4. Passar a usar a propriedade de `resolveSheetColumns_(sheet, ..)` na função específica.
+5.  **Dashboards de saída**: em tabelas de consolidação (ex.: DASHBOARD), preferir saída "limpa" (não imprimir `0` quando não agrega valor visual) e derivar indicadores temporais de data-base oficial (`DATA LOTE`) para evitar divergência entre abas.
 
 ---
 **Fim de Documento.**
 (Conserve este documento na raiz virtual do projeto para manter coerência semântica perante o desenvolvimento de novas features.)
-## Atualizações do script (FASE-OBRA reorder & CI)
+## Atualizações do script (FASE-OBRA reorder, DASHBOARD e CI)
 
 - Implementada função atualizarOrdemFaseObraPorInformacoesGerais_() em scripts/Utils.gs para reordenar a aba 'FASE-OBRA' seguindo a ordem de 'INFORMAÇÕES GERAIS'. Linhas sem correspondência são movidas ao final.
 - Adicionada executarAtualizarFaseObraDiaria() e criarTriggerDiariaAtualizarFaseObra_() para criação de trigger diário (03:30) — nota: trigger precisa ser ativada no editor do Apps Script.
 - Rotina executarSincronizacaoGlobalMadrugada_ (scripts/Main.gs) foi atualizada para chamar a reordenação durante a sincronização noturna das 01:00.
 - Preservação da coluna técnica 'CHAVE' (coluna AY) ao regravar dados via setValuesPreservandoColunaChave_.
 - Ajustes em scripts/Config.gs: novos HEADERS_COLS e fallbacks para suportar resolução dinâmica de colunas sem depender de índices numéricos.
+- Novo módulo `Dashboard.gs` com função `atualizarPendenciasGeraisDashboard()` para popular a aba `DASHBOARD` (Pendências Gerais).
+- Inclusão da aba `DASHBOARD` em `CONFIG.SHEETS`, `CONFIG.COLUMNS.DASHBOARD` e `CONFIG.HEADERS_COLS.DASHBOARD`.
+- Ajuste do vínculo Empreendimento -> Unidade para também aplicar dropdown em `OCORRÊNCIAS` (além de `INFORMAÇÕES GERAIS`).
+- Menu `⚙️ Automacao ECQUA` atualizado com `📋 Atualizar PENDÊNCIAS GERAIS (DASHBOARD)`.
+- `sincronizacaoManualGlobal()` passou a executar `atualizarPendenciasGeraisDashboard()`.
+- Rotina central diária `executarRotinaDiariaCentralizada_()` passou a executar `atualizarPendenciasGeraisDashboard()`.
+- Regra de semana no DASHBOARD alterada para cálculo em tempo real pela `DATA LOTE`, com exibição `ºS{n}`.
+- Regra de saída no DASHBOARD: não imprimir valores `0` nas colunas numéricas de consolidação.
 - CI: Agent Guard workflow (.github/workflows/agent-guard.yml) agora fornece check run 'agent-checks'. Proteção de branch deve exigir esse contexto para desobstruir merges.
 
 
@@ -111,6 +152,7 @@ Detalhes e passo a passo para ativar o **Acionador Diário Centralizado (01:00)*
         1. `executarSincronizacaoGlobalMadrugada_()` — sincronização completa (push/pull entre FASE-OBRA, PEDIDOS, PRELIMINAR e INFO_GERAIS).
         2. `autorunSincronizarStatusPagamentos()` — atualiza STATUS em `PAGAMENTOS` a partir de `FASE-OBRA` (marcas PAGO).
         3. `autorunGerarRelatorio()` — gera/atualiza o relatório de `PAGAMENTOS` (chama `gerarRelatorioPagamentos`).
+        4. `atualizarPendenciasGeraisDashboard()` — atualiza a consolidação da aba `DASHBOARD`.
     - Cada item é protegido por `try/catch`; se uma subtarefa falhar, a próxima ainda será executada.
     - A execução é envolvida em `executarComDocumentLock_` para reduzir condições de corrida.
 
