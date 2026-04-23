@@ -93,3 +93,4 @@ Obs: este arquivo foi criado automaticamente para suportar monitoramento entre a
 - 2026-04-16T19:19:39.313Z | CustomAgent | COMMIT_PUSH | Adiciona ignore list e integra aos agents | commit: f2e36d5 
 2026-04-16T19:19:47Z | PUSH_TO_MAIN | agent-log: 2026-04-16T19:19:39.313Z COMMIT_PUSH | commit: 3b35039846ec4750ad70b93671d8f28378b5490f | pusher: micaiasviola
 2026-04-22T15:08:44Z | PUSH_TO_MAIN | refactor(processarIntervaloAparaB): ajusta validação de unidades por aba | commit: 6abebdf16f956262ae9185c6fa12a9631c668151 | pusher: micaiasviola
+2026-04-23T16:03:15Z | PUSH_TO_MAIN | feat(dashboard): adiciona funcionalidade de atualização de pendências gerais e integra ao menu | commit: 71ded26f54fbed02ce18018f2ddf95988551e702 | pusher: micaiasviola
