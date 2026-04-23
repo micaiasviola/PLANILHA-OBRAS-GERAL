@@ -83,7 +83,7 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 *   **Estrutura de colunas**:
     *   A `EMPREENDIMENTO`
     *   B `UNID`
-    *   C `SEMANA CRONOGRAMA`
+    *   C `DIAS DE OBRA`
     *   D `SERVIÇOS CONCLUIDOS`
     *   E `SERVIÇOS PENDENTES`
     *   F `VERBA UTILIZADA`
@@ -94,7 +94,7 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
     *   C é calculada por **DATA LOTE** da INFORMAÇÕES GERAIS (sem depender da coluna de semana da FASE-OBRA).
     *   D/E/F/G vêm de agregações da **FASE-OBRA** por unidade.
 *   **Regras de cálculo**:
-    *   `SEMANA CRONOGRAMA` = semana atual desde DATA LOTE, exibida no formato `ºS{n}`.
+    *   `DIAS DE OBRA` = quantidade de dias corridos desde a DATA LOTE até hoje (datas futuras/invalidas ficam vazias).
     *   `SERVIÇOS CONCLUIDOS` = contagem de serviços com status de aprovação 100% aprovado.
     *   `SERVIÇOS PENDENTES` = contagem de serviços exceto 100% aprovado e cancelado.
     *   `VERBA UTILIZADA` = soma dos valores de parcelas cujo STATUS n PAG = `PAGO` (n de 1 a 5).
@@ -136,7 +136,8 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 - Menu `⚙️ Automacao ECQUA` atualizado com `📋 Atualizar PENDÊNCIAS GERAIS (DASHBOARD)`.
 - `sincronizacaoManualGlobal()` passou a executar `atualizarPendenciasGeraisDashboard()`.
 - Rotina central diária `executarRotinaDiariaCentralizada_()` passou a executar `atualizarPendenciasGeraisDashboard()`.
-- Regra de semana no DASHBOARD alterada para cálculo em tempo real pela `DATA LOTE`, com exibição `ºS{n}`.
+- Coluna C do DASHBOARD renomeada para `DIAS DE OBRA`.
+- Regra de C no DASHBOARD alterada para cálculo de dias corridos desde a `DATA LOTE` da unidade.
 - Regra de saída no DASHBOARD: não imprimir valores `0` nas colunas numéricas de consolidação.
 - CI: Agent Guard workflow (.github/workflows/agent-guard.yml) agora fornece check run 'agent-checks'. Proteção de branch deve exigir esse contexto para desobstruir merges.
 

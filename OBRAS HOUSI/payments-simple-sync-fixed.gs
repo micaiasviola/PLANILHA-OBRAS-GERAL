@@ -17,11 +17,11 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // ensure MÊS header exists
   const payLastCol = paySh.getLastColumn();
-  const payHeadersRow = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : (payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : []);
+  const payHeadersRow = payLastCol ? paySh.getRange(1,1,1,payLastCol).getValues()[0].map(h=>String(h||'').trim()) : [];
   if (payHeadersRow.indexOf('MÊS') === -1) {
     paySh.getRange(1, Math.max(1, payLastCol) + 1).setValue('MÊS');
   }
-  const payHeaders = (typeof getHeaderRow === 'function') ? getHeaderRow(paySh) : paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
+  const payHeaders = paySh.getRange(1,1,1,paySh.getLastColumn()).getValues()[0].map(h=>String(h||'').trim());
 
   // header normalization helpers
   const payHeaderNorm = payHeaders.map(h => String(h||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,''));
@@ -38,7 +38,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
 
   // detect columns in FASE-OBRA
   const lastCol = obra.getLastColumn();
-  const headerRow = getHeaderRow(obra);
+  const headerRow = lastCol ? obra.getRange(1,1,1,lastCol).getValues()[0] : [];
   const normalize = txt => String(txt||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
   const normalized = headerRow.map(normalize);
 
@@ -102,18 +102,27 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   const ini = (typeof obterLinhaInicialPorAba === 'function') ? obterLinhaInicialPorAba(obraName) : 3;
   const lastRow = obra.getLastRow();
   if (lastRow < ini) return { imported:0, reason: 'FASE-OBRA sem dados' };
-  const obraData = (typeof getDataRows === 'function') ? getDataRows(obra, ini) : obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
+  const obraData = obra.getRange(ini,1,lastRow-ini+1,lastCol).getValues();
 
-  // read existing payments for dedupe
+  // read existing payments for dedupe / upsert
   const existingRowCount = Math.max(0, paySh.getLastRow() - 1);
   let existing = [];
-  if (existingRowCount > 0) {
-    // getDataRows helper exists in payments-utils.js — use it to avoid direct getRange with numeric literals
-    existing = getDataRows(paySh, 2);
-    if (existing.length > existingRowCount) existing = existing.slice(0, existingRowCount);
-  }
+  if (existingRowCount > 0) existing = paySh.getRange(2, 1, existingRowCount, paySh.getLastColumn()).getValues();
   const getCell = (arr, idx) => (Array.isArray(arr) && typeof idx === 'number' && idx >= 0 && idx < arr.length) ? arr[idx] : '';
 
+  // helper: compare two rows (shallow) for exact equality
+  const rowsAreEqual_ = (a, b) => {
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    const len = Math.max(a.length, b.length);
+    for (let i = 0; i < len; i++) {
+      const va = a[i] === undefined || a[i] === null ? '' : String(a[i]);
+      const vb = b[i] === undefined || b[i] === null ? '' : String(b[i]);
+      if (va !== vb) return false;
+    }
+    return true;
+  };
+
+  // currency / date helpers (defined early so they're available to subsequent logic)
   const _localParseCurrency = function(v){
     if (v === null || v === undefined || v === '') return null;
     if (typeof v === 'number') return v;
@@ -153,6 +162,59 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
     return null;
   };
 
+  // helper: decide se a linha nova deve substituir a existente (preferência por VALOR preenchido e status mais "final")
+  const preferRowByValueAndStatus_ = (existingRow, newRow, valIdxHdr, statusIdxHdr) => {
+    const get = (r, idx) => (Array.isArray(r) && typeof idx === 'number' && idx >= 0 && idx < r.length) ? r[idx] : '';
+    const existingVal = parseCurrencyToNumberLocal(get(existingRow, valIdxHdr));
+    const newVal = parseCurrencyToNumberLocal(get(newRow, valIdxHdr));
+    const existingHasVal = existingVal !== null && existingVal !== '';
+    const newHasVal = newVal !== null && newVal !== '';
+
+    const normalizeStatus = s => String(s || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z0-9]/g,'');
+    const existingStatus = normalizeStatus(get(existingRow, statusIdxHdr));
+    const newStatus = normalizeStatus(get(newRow, statusIdxHdr));
+
+    if (!existingHasVal && newHasVal) return true;
+    if (existingHasVal !== newHasVal) return newHasVal;
+    if (existingStatus.indexOf('PREVISTO') !== -1 && (newStatus.indexOf('LIBERADO') !== -1 || newStatus.indexOf('PAGO') !== -1)) return true;
+    if (existingStatus.indexOf('LIBERADO') !== -1 && newStatus.indexOf('PAGO') !== -1) return true;
+    if (existingVal !== null && newVal !== null && existingVal !== newVal) {
+      if (newStatus.indexOf('PAGO') !== -1) return true;
+      if (existingStatus === '' && newStatus !== '') return true;
+    }
+    return false;
+  };
+
+  // build quick lookup structures for existing rows to allow upserts
+  const existingEntries = [];
+  const existingByChave = new Map(); // key: 'CHAVE:xxx' -> entry
+  const existingByTuple = new Map(); // key: 'EMP|UNI|PREST|DATE' -> [entries]
+  if (existing && existing.length) {
+    for (let i = 0; i < existing.length; i++) {
+      const r = existing[i];
+      const chaveExisting = (typeof payChaveIdx !== 'undefined' && payChaveIdx >= 0) ? String(getCell(r, payChaveIdx) || '').trim() : '';
+      const payEmpIdx = findPayContains('EMPREEND');
+      const payUnidIdx = findPayContains('UNID');
+      const payPrestIdx = (findPayContains('PRESTADOR') >= 0) ? findPayContains('PRESTADOR') : findPayContains('FORNECEDOR');
+      const payDateIdx = findPayContains('DATA');
+      const payValIdxFinal = (typeof payValIdx === 'number' && payValIdx >= 0) ? payValIdx : findPayContains('VALOR');
+
+      const empV = String(getCell(r, payEmpIdx) || '').trim();
+      const uniV = String(getCell(r, payUnidIdx) || '').trim();
+      const prestV = String(getCell(r, payPrestIdx) || '').trim();
+      const dateKey = normalizeDateKey(getCell(r, payDateIdx));
+      const valNumExisting = parseCurrencyToNumberLocal(getCell(r, payValIdxFinal));
+      const tupleKeyExisting = [empV, uniV, prestV, dateKey].join('|');
+
+      const entry = { chave: chaveExisting, emp: empV, uni: uniV, prest: prestV, dateKey: dateKey, valNum: valNumExisting, rowIndex: i + 2, rowArray: r };
+      existingEntries.push(entry);
+      if (chaveExisting) existingByChave.set('CHAVE:' + chaveExisting, entry);
+      if (!existingByTuple.has(tupleKeyExisting)) existingByTuple.set(tupleKeyExisting, []);
+      existingByTuple.get(tupleKeyExisting).push(entry);
+    }
+  }
+  // helpers already defined earlier in the file; avoid redeclaration here
+
   const existingKeys = new Set(existing.map(r => {
     const chaveExisting = (typeof payChaveIdx !== 'undefined' && payChaveIdx >= 0) ? String(getCell(r, payChaveIdx) || '').trim() : '';
     if (chaveExisting) return 'CHAVE:' + chaveExisting;
@@ -174,20 +236,13 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   }));
 
   const outMap = new Map();
+  const updates = []; // {rowIndex, values}
   const months = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
-
-  // Mapear nomes de cabeçalho fornecidos pelo usuário para offsets (0-based) nas linhas de obra
-  const empHeaderName = 'EMPREENDIMENTO';
-  const uniHeaderName = 'UNID';
-  const empIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === empHeaderName.toUpperCase());
-  const uniIdx = headerRow.findIndex(h => String(h||'').trim().toUpperCase() === uniHeaderName.toUpperCase());
-  const empColOffset = (empIdx !== -1) ? empIdx : 0;
-  const uniColOffset = (uniIdx !== -1) ? uniIdx : 1;
 
   for (let r=0;r<obraData.length;r++) {
     const row = obraData[r];
-    const emp = (typeof row[empColOffset] !== 'undefined') ? row[empColOffset] : '';
-    const uni = (typeof row[uniColOffset] !== 'undefined') ? row[uniColOffset] : '';
+    const emp = (typeof row[0] !== 'undefined') ? row[0] : '';
+    const uni = (typeof row[1] !== 'undefined') ? row[1] : '';
     const sourceChaveVal = (typeof sourceChaveIdx === 'number' && sourceChaveIdx >= 0) ? row[sourceChaveIdx] : '';
     const sourcePrestadorVal = (typeof sourcePrestadorIdx === 'number' && sourcePrestadorIdx >= 0) ? row[sourcePrestadorIdx] : '';
 
@@ -220,8 +275,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
       const tupleKey = [String(emp||'').trim(),String(uni||'').trim(),String(sourcePrestadorVal||'').trim(), dateKey].join('|');
       const chaveCandidate = String(sourceChaveVal || '').trim();
       const key = chaveCandidate ? ('CHAVE:' + chaveCandidate) : tupleKey;
-      if (existingKeys.has(key)) continue;
-
+      // build the output row for this candidate (do this before checking for existing matches)
       const rowOut = new Array(payHeaders.length).fill('');
       for (let i=0;i<payHeaders.length;i++) {
         const hn = String(payHeaders[i]||'').toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g,'');
@@ -238,26 +292,37 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
         }
       }
 
-      const existingEntry = outMap.get(key);
-      if (existingEntry) {
-        // Decide preferência: 1) preferir linha com VALOR não vazio 2) preferir STATUS LIBERADO sobre PREVISTO
-        const statusIdx = (typeof payStatusIdx === 'number' && payStatusIdx >= 0) ? payStatusIdx : -1;
-        const valIdxHdr = (typeof payValIdx === 'number' && payValIdx >= 0) ? payValIdx : -1;
-        const existingStatusRaw = (statusIdx >= 0) ? String(existingEntry[statusIdx] || '').toUpperCase() : '';
-        const newStatusRaw = (statusIdx >= 0) ? String(rowOut[statusIdx] || '').toUpperCase() : '';
-        const existingVal = (valIdxHdr >= 0) ? existingEntry[valIdxHdr] : '';
-        const newVal = (valIdxHdr >= 0) ? rowOut[valIdxHdr] : '';
-
-        const existingHasVal = !(existingVal === undefined || existingVal === null || String(existingVal).toString().trim() === '');
-        const newHasVal = !(newVal === undefined || newVal === null || String(newVal).toString().trim() === '');
-
-        let preferNew = false;
-        if (!existingHasVal && newHasVal) preferNew = true;
-        if (!preferNew) {
-          if (existingHasVal === newHasVal) {
-            if (existingStatusRaw.indexOf('PREVISTO') !== -1 && newStatusRaw.indexOf('LIBERADO') !== -1) preferNew = true;
+      // --- UPDATES: check if this candidate matches an existing row and should update it ---
+      let matchedExisting = false;
+      if (chaveCandidate) {
+        const exist = existingByChave.get('CHAVE:' + chaveCandidate);
+        if (exist) {
+          matchedExisting = true;
+          if (preferRowByValueAndStatus_(exist.rowArray, rowOut, payValIdx, payStatusIdx)) {
+            updates.push({ rowIndex: exist.rowIndex, values: rowOut });
+            // reflect change for subsequent comparisons
+            exist.rowArray = rowOut;
           }
         }
+      } else {
+        const arr = existingByTuple.get(tupleKey) || [];
+        if (arr.length) {
+          for (const exist of arr) {
+            if (rowsAreEqual_(exist.rowArray, rowOut)) { matchedExisting = true; break; }
+            if (preferRowByValueAndStatus_(exist.rowArray, rowOut, payValIdx, payStatusIdx)) {
+              updates.push({ rowIndex: exist.rowIndex, values: rowOut });
+              exist.rowArray = rowOut;
+              matchedExisting = true;
+              break;
+            }
+          }
+        }
+      }
+      if (matchedExisting) continue;
+
+      const existingEntry = outMap.get(key);
+      if (existingEntry) {
+        const preferNew = preferRowByValueAndStatus_(existingEntry, rowOut, payValIdx, payStatusIdx);
         if (preferNew) outMap.set(key, rowOut);
       } else {
         outMap.set(key, rowOut);
@@ -267,22 +332,37 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
   }
 
   const outRows = Array.from(outMap.values());
-  if (outRows.length === 0) {
-    if (dryRun) return { imported:0, reason: 'Nenhum novo lançamento a importar.' };
-    return { imported:0, reason: 'Nenhum novo lançamento a importar.' };
+  if (outRows.length === 0 && updates.length === 0) {
+    if (dryRun) return { imported:0, updated:0, reason: 'Nenhum novo lançamento a importar.' };
+    return { imported:0, updated:0, reason: 'Nenhum novo lançamento a importar.' };
   }
-  if (dryRun) return { imported: outRows.length, sample: outRows.slice(0,20) };
+  if (dryRun) return { imported: outRows.length, updated: updates.length, sample: outRows.slice(0,20) };
 
-  const startRow = Math.max(2, paySh.getLastRow()+1);
+  // apply updates first, then inserts
   try {
-    if (typeof setValuesPreservandoColunaChave_ === 'function') {
-      setValuesPreservandoColunaChave_(paySh, startRow, 1, outRows);
-    } else {
-      paySh.getRange(startRow,1,outRows.length,outRows[0].length).setValues(outRows);
+    // apply updates in-place
+    for (let u = 0; u < updates.length; u++) {
+      const rowIdx = updates[u].rowIndex;
+      const values = updates[u].values;
+      try {
+        paySh.getRange(rowIdx, 1, 1, values.length).setValues([values]);
+      } catch (e) {
+        Logger.log('Falha ao atualizar linha %s em PAGAMENTOS: %s', rowIdx, e && e.message);
+      }
     }
-    Logger.log('sincronizarPagamentosSimplesFromFaseObraFixed: gravados %s lançamentos em PAGAMENTOS', outRows.length);
+
+    // then insert new rows
+    if (outRows && outRows.length) {
+      const startRowInsert = Math.max(2, paySh.getLastRow()+1);
+      if (typeof setValuesPreservandoColunaChave_ === 'function') {
+        setValuesPreservandoColunaChave_(paySh, startRowInsert, 1, outRows);
+      } else {
+        paySh.getRange(startRowInsert,1,outRows.length,outRows[0].length).setValues(outRows);
+      }
+    }
+    Logger.log('sincronizarPagamentosSimplesFromFaseObraFixed: atualizados %s, gravados %s lançamentos em PAGAMENTOS', updates.length || 0, outRows.length);
   } catch (e) {
-    Logger.log('Erro ao gravar lançamentos em PAGAMENTOS: %s', e && e.message);
+    Logger.log('Erro ao gravar/atualizar lançamentos em PAGAMENTOS: %s', e && e.message);
     throw e;
   }
   try {

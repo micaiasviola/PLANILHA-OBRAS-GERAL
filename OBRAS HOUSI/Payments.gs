@@ -43,7 +43,7 @@ function criarAbaPagamentosSimples() {
     'PARCELA_NUM','TOTAL_SERVICO','VALOR','DATA_PREVISTA','DATA_PAGAMENTO','STATUS','FORMA_PAGAMENTO',
     'DOCUMENTO_LINK','OBS','CRIADO_POR','CRIADO_EM','ATUALIZADO_POR','ATUALIZADO_EM','MÊS'
   ];
-  if (typeof setHeaderRow === 'function') setHeaderRow(sh, headers); else sh.getRange(1,1,1,headers.length).setValues([headers]);
+  sh.getRange(1,1,1,headers.length).setValues([headers]);
   try { sh.setFrozenRows(1); } catch(e) {}
   return sh;
 }
@@ -92,7 +92,7 @@ function agregarResumoParaFaseObra(chave) {
     for (let i = 0; i < vals.length; i++) {
       if (String(vals[i][0]) === String(chave)) {
         const row = ini + i;
-        const headerRow = (typeof getHeaderRow === 'function') ? getHeaderRow(obra) : obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
+        const headerRow = obra.getRange(1,1,1,obra.getLastColumn()).getValues()[0];
         let paidColIdx = headerRow.indexOf('PAID_SUM');
         let pendingColIdx = headerRow.indexOf('PENDING_SUM');
         if (paidColIdx === -1 || pendingColIdx === -1) {
@@ -137,7 +137,7 @@ function gerarRelatorioPagamentosDryRun() {
     return res;
   }
   const r = res.result || {};
-  ui.alert('Dry-run concluído: ' + (r.imported || 0) + ' lançamentos (amostra registrada no Logger).');
+  ui.alert('Dry-run concluído: ' + (r.imported || 0) + ' importados, ' + (r.updated || 0) + ' atualizados (amostra registrada no Logger).');
   Logger.log('Relatório pagamentos (dry-run): %s', JSON.stringify(r));
   return r;
 }
@@ -153,7 +153,7 @@ function gerarRelatorioPagamentosRun() {
     return res;
   }
   const r = res.result || {};
-  ui.alert('Execução concluída: ' + (r.imported || 0) + ' lançamentos importados.');
+  ui.alert('Execução concluída: ' + (r.imported || 0) + ' importados, ' + (r.updated || 0) + ' atualizados.');
   Logger.log('Relatório pagamentos (exec): %s', JSON.stringify(r));
   return r;
 }
@@ -165,6 +165,9 @@ function criarMenuPagamentos() {
     const menu = ui.createMenu('💳 Pagamentos');
     menu.addItem('Gerar Relatório (Dry-run)', 'gerarRelatorioPagamentosDryRun');
     menu.addItem('Gerar Relatório (Executar)', 'gerarRelatorioPagamentosRun');
+    menu.addSeparator();
+    menu.addItem('Criar Trigger Relatório Diário', 'criarTriggerGerarRelatorioDiario');
+    menu.addItem('Remover Trigger Relatório', 'removerTriggerGerarRelatorio');
     menu.addToUi();
   } catch (e) {}
 }
