@@ -59,6 +59,15 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
     });
   }
 
+  const sourceServicoIdxExact = headerRow.findIndex(h => String(h || '').trim().toUpperCase() === 'CATEGORIA DE SERVIÇO');
+  let sourceServicoIdx = sourceServicoIdxExact;
+  if (sourceServicoIdx < 0) {
+    sourceServicoIdx = normalized.findIndex(h => {
+      const v = (h || '');
+      return v.indexOf('CATEGORIA') !== -1 && v.indexOf('SERVICO') !== -1;
+    });
+  }
+
   // helper: detect if a payment column candidate refers to the 1º pagamento
   const isFirstPaymentCandidate = (pc) => {
     try {
@@ -245,6 +254,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
     const uni = (typeof row[1] !== 'undefined') ? row[1] : '';
     const sourceChaveVal = (typeof sourceChaveIdx === 'number' && sourceChaveIdx >= 0) ? row[sourceChaveIdx] : '';
     const sourcePrestadorVal = (typeof sourcePrestadorIdx === 'number' && sourcePrestadorIdx >= 0) ? row[sourcePrestadorIdx] : '';
+    const sourceServicoVal = (typeof sourceServicoIdx === 'number' && sourceServicoIdx >= 0) ? row[sourceServicoIdx] : '';
 
     for (const pc of paymentCols) {
       const valRaw = (pc.val>=0)?row[pc.val]:'';
@@ -272,7 +282,7 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
       if (!isLiberado && !(includePaid && isPago)) continue;
 
       const dateKey = dateObj ? dateObj.toISOString().slice(0,10) : normalizeDateKey(dateValRaw);
-      const tupleKey = [String(emp||'').trim(),String(uni||'').trim(),String(sourcePrestadorVal||'').trim(), dateKey].join('|');
+      const tupleKey = [String(emp||'').trim(),String(uni||'').trim(),String(sourcePrestadorVal||'').trim(),String(sourceServicoVal||'').trim(), dateKey].join('|');
       const chaveCandidate = String(sourceChaveVal || '').trim();
       const key = chaveCandidate ? ('CHAVE:' + chaveCandidate) : tupleKey;
       // build the output row for this candidate (do this before checking for existing matches)
@@ -284,6 +294,8 @@ function sincronizarPagamentosSimplesFromFaseObraFixed(dryRun, includePaid) {
         else if (hn.indexOf('EMPREEND')!==-1) rowOut[i] = emp||'';
         else if (hn.indexOf('UNID')!==-1) rowOut[i] = uni||'';
         else if (hn.indexOf('PRESTADOR')!==-1 || hn.indexOf('FORNECEDOR')!==-1) rowOut[i] = sourcePrestadorVal || '';
+        else if (hn.indexOf('CATEGORIA')!==-1 && hn.indexOf('SERVICO')!==-1) rowOut[i] = sourceServicoVal || '';
+        else if (hn.indexOf('SERVICO')!==-1 && hn.indexOf('PRESTADOR')===-1 && hn.indexOf('FORNECEDOR')===-1) rowOut[i] = sourceServicoVal || '';
         else if (hn.indexOf('DATA')!==-1) rowOut[i] = (dateObj instanceof Date && !isNaN(dateObj)) ? dateObj : (dateValRaw || '');
         else if (hn.indexOf('STATUS')!==-1) rowOut[i] = statusRaw||'';
         else if (hn.indexOf('VALOR')!==-1 && hn.indexOf('TOTAL')===-1) rowOut[i] = (valNum===null?'':valNum);

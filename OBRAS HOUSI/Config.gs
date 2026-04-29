@@ -11,6 +11,7 @@ const CONFIG = {
     OCORRENCIAS: "OCORRÊNCIAS",
     INFO_GERAIS: "INFORMAÇÕES GERAIS",
     DASHBOARD: "DASHBOARD",
+    INFORME_PRESTADORES: "INFORME PRESTADORES",
     CADASTROS: "CADASTROS",
     BACKUP: "Backup"
   },
@@ -38,6 +39,7 @@ const CONFIG = {
       FORNECEDOR: 11, // K
       DATA_SOLICITADO_OPR: 12, // L
       DATA_AGENDADO_ADM: 13,   // M
+      ORDEM: 52,
       VERBA_HOUSI: 23, // W
       VERBA_TETO: 24,  // X
       CHAVE: 51        // AY
@@ -144,6 +146,7 @@ const CONFIG = {
       DATA_INICIO_PLANEJADO: ["DATA INÍCIO PLANEJADO EXECUÇÃO", "DATA INICIO PLANEJADO", "DATA INICIO"],
       SEMANA_MES:           ["SEMANA DO MÊS", "SEMANA DO MES", "SEMANA MES"],
       SEMANA:               ["SEMANA CRONOGRAMA", "SEMANA CRONO", "SEMANA"],
+      ORDEM:                ["ORDEM"],
       // Colunas ainda sem cabeçalho → fallback fixo
       VERBA_HOUSI:          23,  // W (fixo)
       VERBA_TETO:           24,  // X (fixo)
