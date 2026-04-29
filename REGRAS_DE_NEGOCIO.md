@@ -63,6 +63,7 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
     *   Exemplo: Se o lote é 27/03, o dia 03/04 (7º dia) é 1ª semana. O dia 09/04 (13º dia) é 2ª semana.
 *   **Gatilho Fase Entrega**: O usuário pode marcar Ativo um Dropdown customizado `"ENVIAR P/ ENTREGA"`. Ao fazer isso massivamente, o Automator ("Sincronizar Envios para Fase-Entrega" via UI) copiará a Unidade para a aba final.
 *   **IDs Estáveis UUID (A Magia)**: Ao criar serviços ou transferi-los prara Pedidos, o script gera silenciosamente uma **CHAVE ESTATICA UUID (Coluna Especial Técnica AY)**. É por essa chave garantida (e não mais por nome do Empreendimento + Serviço) que o script sabe quem é quem na tabela cruzada. Nunca delete as Chaves da extremidade final das colunas!.
+*   **ORDEM Visual**: A coluna `ORDEM` guarda apenas o ranking visual atual da aba `FASE-OBRA` (1, 2, 3...). Ela pode ser recalculada a qualquer momento com base na posição física das linhas. O UUID da `AY` é a chave estável de referência, mas não define a posição por si só.
 
 ### 4.4. PEDIDOS-GERAL (Logística e Suprimentos)
 *   **Papel**: Visão focada do departamento de compras/recebimentos. Basicamente os serviços com `ATRELADO="HOUSI"` listados.
@@ -107,6 +108,39 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
     *   Incluída no acionador diário centralizado das 01:00.
     *   Incluída em `sincronizacaoManualGlobal()`.
 
+### 4.8. INFORME PRESTADORES (Pagamento por período de medição)
+*   **Papel**: Relatório operacional dos prestadores/contratados com foco em pagamento, organizado por período de medição e não por parcela técnica.
+*   **Fonte de dados**: Aba `PAGAMENTOS`, que já recebe os dados sincronizados da `FASE-OBRA`.
+*   **Filtro de inclusão**: somente registros com status equivalente a **LIBERADO** entram no relatório ativo.
+*   **Classificação de período**:
+    *   **N1**: medições entre os dias **26 e 05**.
+    *   **N2**: medições entre os dias **06 e 15**.
+    *   **N3**: medições entre os dias **16 e 25**.
+*   **Pagamento previsto**:
+    *   N1 paga no dia **10** do mês seguinte quando a medição cai de 26 a 31, ou no dia 10 do mesmo mês quando cai de 01 a 05.
+    *   N2 paga no dia **20** do mesmo mês.
+    *   N3 paga no **último dia útil do mês**.
+*   **Campos exibidos por bloco**:
+    *   `PRESTADOR`
+    *   `EMPREENDIMENTO / UNIDADE`
+    *   `SERVIÇO`
+    *   `VALOR`
+*   **Critério visual**:
+    *   A aba final é montada em **3 blocos horizontais**: N1, N2 e N3.
+    *   Cada bloco possui **uma única linha de título**, seguida da linha de contexto do período e, então, os dados.
+    *   Os cabeçalhos repetidos por seção foram removidos para evitar poluição visual.
+    *   O relatório usa indentação leve e larguras diferenciadas para melhorar leitura e evitar corte de texto.
+*   **Seções internas**:
+    *   Registros com pagamento previsto atual ou futuro ficam na seção **ATIVOS**.
+    *   Registros com pagamento previsto já vencido ficam na seção **LEGADOS / ANTIGOS**.
+*   **Observação de dados**:
+    *   O campo de valor deve ser lido a partir de aliases como `VALOR DO PGTO`, `VALOR_PGTO`, `VALOR DO PAGAMENTO`, `VALOR_PAGAMENTO`, `VALOR` ou `VALOR_PARCELA`.
+    *   O serviço deve aceitar leitura tanto pelo campo `SERVICO` quanto pelos aliases de categoria/subcategoria, quando existirem.
+*   **Execução**:
+    *   Função principal: `atualizarInformePrestadores()` em `PrestadoresInforme.gs`.
+    *   Disponível no menu operacional para atualização manual.
+    *   Incluída na rotina diária centralizada para manter o relatório sempre sincronizado.
+
 ---
 
 ## ⚡ 5. Regras de Ouro e Dicas para o Backend App Script
@@ -132,6 +166,10 @@ O código **não amarra** mais, por exemplo, o índice numérico (ex: "Coluna E"
 - Ajustes em scripts/Config.gs: novos HEADERS_COLS e fallbacks para suportar resolução dinâmica de colunas sem depender de índices numéricos.
 - Novo módulo `Dashboard.gs` com função `atualizarPendenciasGeraisDashboard()` para popular a aba `DASHBOARD` (Pendências Gerais).
 - Inclusão da aba `DASHBOARD` em `CONFIG.SHEETS`, `CONFIG.COLUMNS.DASHBOARD` e `CONFIG.HEADERS_COLS.DASHBOARD`.
+- Novo módulo `PrestadoresInforme.gs` para gerar a aba `INFORME PRESTADORES` com agrupamento por período de medição.
+- O relatório de prestadores passou a consumir a aba `PAGAMENTOS`, usando status `LIBERADO`, períodos N1/N2/N3 e exibição de `VALOR` por linha.
+- O layout do `INFORME PRESTADORES` foi simplificado: remoção de cabeçalhos duplicados e adoção de 4 colunas por bloco.
+- O valor monetário do informe aceita múltiplos cabeçalhos de origem, incluindo `VALOR DO PGTO` e `VALOR DO PAGAMENTO`.
 - Ajuste do vínculo Empreendimento -> Unidade para também aplicar dropdown em `OCORRÊNCIAS` (além de `INFORMAÇÕES GERAIS`).
 - Menu `⚙️ Automacao ECQUA` atualizado com `📋 Atualizar PENDÊNCIAS GERAIS (DASHBOARD)`.
 - `sincronizacaoManualGlobal()` passou a executar `atualizarPendenciasGeraisDashboard()`.

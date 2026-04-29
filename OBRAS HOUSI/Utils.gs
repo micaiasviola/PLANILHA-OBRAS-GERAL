@@ -14,6 +14,7 @@ function obterLinhaInicialPorAba(nomeAba) {
   if (nomeAba === S.OCORRENCIAS) return 3;
   if (nomeAba === S.INFO_GERAIS) return 4;
   if (nomeAba === S.DASHBOARD) return 2;
+  if (nomeAba === S.INFORME_PRESTADORES) return 3;
   return 2;
 }
 
@@ -404,6 +405,8 @@ function setValuesPreservandoColunaChave_(aba, startRow, startCol, values) {
  * mantendo a ordem original entre elas.
  */
 function atualizarOrdemFaseObraPorInformacoesGerais_() {
+  // Preferir coluna ORDEM se existir, senão usar fallback antigo
+
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const info = ss.getSheetByName(CONFIG.SHEETS.INFO_GERAIS);
   const obra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
@@ -518,11 +521,62 @@ function atualizarOrdemFaseObraPorInformacoesGerais_() {
 /** Wrapper executável por trigger (registro diário) */
 function executarAtualizarFaseObraDiaria() {
   try {
+    atualizarOrdemFaseObraPorVisual_();
     atualizarOrdemFaseObraPorInformacoesGerais_();
   } catch (err) {
     console.error('Erro ao atualizar ordem FASE-OBRA: ' + err);
   }
 }
+
+/**
+ * Atualiza a coluna ORDEM da FASE-OBRA com base na ordem visual atual da aba.
+ * A coluna CHAVE (UUID, AY) é usada como referência estável para rastreio futuro,
+ * mas a gravação da ordem segue a posição física das linhas.
+ *
+ * @returns {Map<string, number>} mapa CHAVE -> ORDEM calculada
+ */
+function atualizarOrdemFaseObraPorVisual_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const obra = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+  if (!obra) return new Map();
+
+  return executarComDocumentLock_(function() {
+    const C_OBRA = resolveSheetColumns_(obra, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+    const iniObra = obterLinhaInicialPorAba(CONFIG.SHEETS.OBRA);
+    const lastObra = Math.max(
+      obterUltimaLinhaDados_(obra, C_OBRA.EMP),
+      obterUltimaLinhaDados_(obra, C_OBRA.CHAVE || C_OBRA.EMP)
+    );
+    if (lastObra < iniObra) return new Map();
+
+    const colOrdem = C_OBRA.ORDEM || CONFIG.COLUMNS.OBRA.ORDEM;
+    const colChave = C_OBRA.CHAVE || CONFIG.COLUMNS.OBRA.CHAVE;
+    if (!colOrdem) return new Map();
+
+    const total = lastObra - iniObra + 1;
+    const larguraLeitura = Math.max(colOrdem, colChave || 0);
+    const dados = obra.getRange(iniObra, 1, total, larguraLeitura).getDisplayValues();
+    const ordemVals = new Array(total);
+    const mapaOrdemPorChave = new Map();
+
+    for (let i = 0; i < total; i++) {
+      const ordem = i + 1;
+      ordemVals[i] = [ordem];
+
+      if (colChave > 0) {
+        const chave = String((dados[i][colChave - 1]) || "").trim();
+        if (chave) mapaOrdemPorChave.set(chave, ordem);
+      }
+    }
+
+    const rangeOrdem = obra.getRange(iniObra, colOrdem, total, 1);
+    rangeOrdem.clearDataValidations();
+    rangeOrdem.setValues(ordemVals);
+
+    return mapaOrdemPorChave;
+  });
+}
+
 
 /** Cria um trigger diário (3:30) para atualizar a ordem da FASE-OBRA */
 function criarTriggerDiariaAtualizarFaseObra_() {
