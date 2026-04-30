@@ -118,6 +118,94 @@ function atualizarInformePrestadores() {
       target.setColumnWidth(c, c % 4 === 1 ? 150 : (c % 4 === 2 ? 185 : (c % 4 === 3 ? 135 : 95)));
     }
 
+    // --- Construir tabela auxiliar de serviços (da FASE-OBRA) a partir da coluna O (15)
+    try {
+      const colStart = 15; // coluna O
+      const hdrs = [
+        'EMPREENDIMENTO', 'UNID', 'CATEGORIA DE SERVIÇO', 'FORNECEDOR / PRESTADOR ECQUA',
+        'DATA INÍCIO REAL EXECUÇÃO', 'DATA FIM REAL EXECUÇÃO', 'MÊS DO SERVIÇO', 'STATUS PGTO', 'VALOR PGTO'
+      ];
+
+      // obter dados da aba FASE-OBRA (para enriquecer pelo CHAVE)
+      const obraSh = ss.getSheetByName(CONFIG.SHEETS.OBRA);
+      let mapaFasePorChave = {};
+      if (obraSh) {
+        const C_OBRA = resolveSheetColumns_(obraSh, CONFIG.HEADERS_COLS.OBRA, CONFIG.COLUMNS.OBRA);
+        const raw = obraSh.getDataRange().getValues();
+        for (let r = 1; r < raw.length; r++) {
+          const row = raw[r];
+          const chave = (C_OBRA && C_OBRA.CHAVE) ? String(row[C_OBRA.CHAVE - 1] || '').trim() : '';
+          if (!chave) continue;
+          mapaFasePorChave[chave] = { row: row, cols: C_OBRA };
+        }
+      }
+
+      // Preparar linhas de saída: buscar em PAGAMENTOS os registros LIBERADO ou PAGO
+      const out = [];
+      for (let i = 0; i < data.length; i++) {
+        const row = data[i];
+        const status = String((map.STATUS >= 0) ? row[map.STATUS] : '').trim().toUpperCase();
+        if (!(status.indexOf('LIBERADO') !== -1 || status.indexOf('PAGO') !== -1)) continue;
+
+        const chaveServico = String((map.CHAVE_SERVICO >= 0) ? row[map.CHAVE_SERVICO] : (map.ID >= 0 ? row[map.ID] : '')).trim();
+        const pagamentoStatus = String((map.STATUS >= 0) ? row[map.STATUS] : '').trim();
+        const pagamentoValorRaw = (map.VALOR >= 0) ? row[map.VALOR] : '';
+        const pagamentoValor = converterParaNumero_(pagamentoValorRaw) || 0;
+
+        let emp = String((map.EMPREENDIMENTO >= 0) ? row[map.EMPREENDIMENTO] : '').trim();
+        let uni = String((map.UNID >= 0) ? row[map.UNID] : '').trim();
+        let categoria = '';
+        let fornecedor = String((map.PRESTADOR >= 0) ? row[map.PRESTADOR] : '').trim();
+        let dataInicio = null;
+        let dataFim = null;
+
+        if (chaveServico && mapaFasePorChave[chaveServico]) {
+          const info = mapaFasePorChave[chaveServico];
+          const r = info.row;
+          const C = info.cols;
+          if (C && C.EMP) emp = String(r[C.EMP - 1] || emp).trim();
+          if (C && C.UNI) uni = String(r[C.UNI - 1] || uni).trim();
+          if (C && C.CAT) categoria = String(r[C.CAT - 1] || '').trim();
+          if (C && C.FORNECEDOR) fornecedor = String(r[C.FORNECEDOR - 1] || fornecedor).trim();
+          // tentar campos de data (fallbacks comuns)
+          if (C && C.DATA_INICIO_PLANEJADO) dataInicio = parseDateFlexivel_(r[C.DATA_INICIO_PLANEJADO - 1]);
+          if (C && C.DATA_PRAZO) dataFim = parseDateFlexivel_(r[C.DATA_PRAZO - 1]);
+        }
+
+        // mês do serviço (formato: MM. MMM)
+        const mesLabel = (function(d) {
+          const dt = d instanceof Date ? d : null;
+          if (!dt) return '';
+          const n = dt.getMonth() + 1;
+          const names = ['JAN','FEV','MAR','ABR','MAI','JUN','JUL','AGO','SET','OUT','NOV','DEZ'];
+          return (n < 10 ? '0' + n : '' + n) + '. ' + names[dt.getMonth()];
+        })(dataInicio || obterDataBaseInformePrestadores_(row, map));
+
+        out.push([
+          emp || '',
+          uni || '',
+          categoria || '',
+          fornecedor || '',
+          dataInicio instanceof Date ? Utilities.formatDate(dataInicio, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '',
+          dataFim instanceof Date ? Utilities.formatDate(dataFim, Session.getScriptTimeZone(), 'dd/MM/yyyy') : '',
+          mesLabel || '',
+          pagamentoStatus || '',
+          pagamentoValor ? ('R$ ' + pagamentoValor.toFixed(2).replace('.', ',')) : ''
+        ]);
+      }
+
+      // Escrever cabeçalho e linhas na planilha (coluna O = 15)
+      if (out.length > 0) {
+        // cabeçalho na mesma linha 3 para alinhamento visual
+        target.getRange(3, colStart, 1, hdrs.length).setValues([hdrs]);
+        target.getRange(4, colStart, out.length, hdrs.length).setValues(out);
+        // ajustar larguras
+        for (let ci = 0; ci < hdrs.length; ci++) target.setColumnWidth(colStart + ci, ci === 1 ? 120 : 150);
+      }
+    } catch (err) {
+      console.error('Erro ao montar tabela auxiliar de FASE-OBRA: ' + err);
+    }
+
     ss.toast('Informe de prestadores atualizado.', 'Concluído', 4);
     return { total: matriz.length };
   });
